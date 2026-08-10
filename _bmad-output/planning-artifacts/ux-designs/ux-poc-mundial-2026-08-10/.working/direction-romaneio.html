@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Direção B — Romaneio</title>
+<style>
+/* ---- DIREÇÃO B · ROMANEIO ----
+   papel     #F4F1E8  papel de romaneio
+   papel-alt #FBFAF5
+   tinta     #23211C  tinta de máquina
+   tinta-2   #6B665A
+   linha     #D8D3C4
+   carimbo   #A32B22  vermelho de carimbo "conferido"
+   selo      #2F6B4A  verde de deferido
+   marca     #B8862B  âmbar de anotação a lápis
+   -------------------------------- */
+  :root{
+    --papel:#F4F1E8; --papel-alt:#FBFAF5; --tinta:#23211C; --tinta-2:#6B665A;
+    --linha:#D8D3C4; --carimbo:#A32B22; --selo:#2F6B4A; --marca:#B8862B;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#E8E4D8;color:var(--tinta);font-family:var(--serif);font-size:16px;line-height:1.5}
+  .pagina{max-width:1180px;margin:0 auto;padding:32px 24px 80px}
+  .cabeca{border-bottom:1px solid var(--tinta);padding-bottom:18px;margin-bottom:8px}
+  .cabeca h1{font-size:30px;margin:0 0 10px;letter-spacing:-.01em}
+  .cabeca p{color:var(--tinta-2);max-width:70ch;margin:0;font-size:15px;line-height:1.65}
+  h2.sec{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--tinta-2);margin:44px 0 12px;font-weight:400}
+
+  .frame{background:var(--papel);border:1px solid var(--linha);box-shadow:0 1px 0 rgba(0,0,0,.06),0 8px 24px rgba(35,33,28,.09)}
+  .barra{border-bottom:1px solid var(--linha);padding:10px 18px;font-family:var(--mono);font-size:11px;color:var(--tinta-2);display:flex;gap:18px;letter-spacing:.08em}
+  .barra b{color:var(--tinta);font-weight:400}
+
+  .conf{display:grid;grid-template-columns:1fr 320px;min-height:470px}
+  .esq{border-right:1px solid var(--linha)}
+  .ctx{padding:16px 18px;border-bottom:1px solid var(--linha);display:flex;gap:34px}
+  .ctx span{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--tinta-2)}
+  .ctx b{display:block;font-size:20px;font-weight:400;margin-top:2px;letter-spacing:-.01em}
+
+  .leitura{padding:20px 18px;border-bottom:1px solid var(--linha);background:var(--papel-alt)}
+  .leitura label{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--tinta-2)}
+  .campo{margin-top:8px;border-bottom:2px solid var(--tinta);padding:6px 2px 10px;font-family:var(--mono);font-size:30px;letter-spacing:.05em;display:flex;justify-content:space-between;align-items:baseline}
+  .cursor{width:12px;height:26px;background:var(--tinta);display:inline-block}
+
+  table{width:100%;border-collapse:collapse;font-size:15px}
+  th{text-align:left;font-family:var(--mono);font-weight:400;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--tinta-2);padding:10px 18px;border-bottom:1px solid var(--tinta)}
+  td{padding:11px 18px;border-bottom:1px solid var(--linha);font-variant-numeric:tabular-nums}
+  td.num{text-align:right;font-family:var(--mono)}
+  td.cod{font-family:var(--mono);font-size:13px;color:var(--tinta-2)}
+  tr.div td{background:rgba(184,134,43,.10)}
+  .conferido{color:var(--selo)}
+  .difere{color:var(--carimbo)}
+  .aguarda td{color:#A9A395}
+
+  .focal{padding:18px;display:flex;flex-direction:column;background:var(--papel-alt)}
+  .selo{border:2px solid var(--selo);color:var(--selo);padding:7px 10px;text-align:center;font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;transform:rotate(-1.2deg)}
+  .selo.err{border-color:var(--carimbo);color:var(--carimbo)}
+  .desc{font-size:25px;line-height:1.2;margin:20px 0 5px;letter-spacing:-.015em}
+  .emb{color:var(--tinta-2);font-size:14px;font-family:var(--mono)}
+  .qtd{margin-top:24px;padding-top:16px;border-top:1px solid var(--linha)}
+  .qtd span{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--tinta-2);text-transform:uppercase}
+  .qtd b{display:block;font-family:var(--mono);font-size:58px;line-height:1;font-weight:400;margin-top:4px}
+  .hist{margin-top:auto;padding-top:18px;font-family:var(--mono);font-size:11px;color:var(--tinta-2);line-height:1.95}
+  .hist i{font-style:normal;color:var(--tinta)}
+
+  .docas{display:grid;grid-template-columns:repeat(4,1fr)}
+  .doca{border-right:1px solid var(--linha);padding:18px;min-height:220px;display:flex;flex-direction:column}
+  .doca:last-child{border-right:0}
+  .doca .n{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--tinta-2)}
+  .est{margin-top:7px;align-self:flex-start;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border:1px solid currentColor;border-radius:2px}
+  .e-conf{color:var(--selo)} .e-agu{color:var(--marca)} .e-livre{color:#A9A395}
+  .doca .doc{margin-top:15px;font-size:21px;letter-spacing:-.01em}
+  .doca .forn{color:var(--tinta-2);font-size:13px;margin-top:3px;line-height:1.4}
+  .prog{margin-top:auto;padding-top:14px}
+  .trilho{height:5px;background:#E5E1D4}
+  .preen{height:100%;background:var(--selo)}
+  .preen.at{background:var(--marca)}
+  .tempo{font-family:var(--mono);font-size:11px;color:var(--tinta-2);margin-top:8px;display:flex;justify-content:space-between}
+  .tempo b{font-weight:400}
+  .estourou .tempo b{color:var(--carimbo)}
+  .nota{color:var(--tinta-2);font-size:14px;margin-top:12px;line-height:1.7;max-width:76ch}
+  .nota b{color:var(--carimbo);font-weight:400}
+</style>
+</head>
+<body>
+<div class="pagina">
+
+  <div class="cabeca">
+    <h1>Direção B · Romaneio</h1>
+    <p>O registro documental levado a sério. Serifada para o conteúdo e monoespaçada para número e rótulo — a mesma divisão de uma nota fiscal impressa. Fundo de papel levemente quente, grade fina, e um vermelho de carimbo reservado ao que diverge. A conferência é um <em>documento sendo assinado</em>, e a tela lembra isso. Movimento suave, com peso de página.</p>
+  </div>
+
+  <h2 class="sec">Conferência de recebimento · doca 3</h2>
+  <div class="frame">
+    <div class="barra"><b>MUNDIAL · CONFERÊNCIA DE RECEBIMENTO</b><span>CLEBER S. · MAT 04127</span><span>06:41</span></div>
+    <div class="conf">
+      <div class="esq">
+        <div class="ctx">
+          <div><span>Documento</span><b>000148372/1</b></div>
+          <div><span>Fornecedor</span><b>Bebidas Primavera</b></div>
+          <div><span>Itens</span><b>3 de 4</b></div>
+        </div>
+        <div class="leitura">
+          <label>Bipe o código</label>
+          <div class="campo"><span>7891234567897</span><span class="cursor"></span></div>
+        </div>
+        <table>
+          <thead><tr><th>Cód</th><th>Produto</th><th class="num">Nota</th><th class="num">Recebido</th></tr></thead>
+          <tbody>
+            <tr><td class="cod">04127</td><td>Refrigerante Cola 2L</td><td class="num">40</td><td class="num conferido">40</td></tr>
+            <tr class="div"><td class="cod">04982</td><td>Cerveja Pilsen Lata 350ml</td><td class="num">120</td><td class="num difere">114</td></tr>
+            <tr><td class="cod">05310</td><td>Água Mineral s/ Gás 500ml</td><td class="num">60</td><td class="num conferido">60</td></tr>
+            <tr class="aguarda"><td class="cod">05877</td><td>Suco Uva Integral 1L</td><td class="num">24</td><td class="num">—</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="focal">
+        <div class="selo">Código aceito</div>
+        <div class="desc">Refrigerante Cola 2L</div>
+        <div class="emb">CX c/ 6 · DUN-14 17891234567894</div>
+        <div class="qtd"><span>Quantidade recebida</span><b>40</b></div>
+        <div class="hist">
+          Lançamentos anteriores<br>
+          <i>05310 · aceito · 60 un</i><br>
+          <i>04982 · diverge · −6 un</i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="nota">Estado variante — a recusa usa o <b>carimbo vermelho no mesmo lugar do selo verde</b>. Posição fixa, leitura de relance.</p>
+  <div class="frame" style="max-width:330px">
+    <div class="focal" style="min-height:0">
+      <div class="selo err">Código não cadastrado</div>
+      <div class="desc" style="font-size:18px;color:var(--tinta-2)">Nenhum produto responde a 7899999000123</div>
+      <div class="emb">Item marcado como pendente</div>
+    </div>
+  </div>
+
+  <h2 class="sec">Painel de docas · recebimento</h2>
+  <div class="frame">
+    <div class="barra"><b>DOCAS</b><span>ROSANA M. · SUPERVISÃO</span><span>ATUALIZA SOZINHO</span></div>
+    <div class="docas">
+      <div class="doca">
+        <div class="n">Doca 1</div><div class="est e-conf">Em conferência</div>
+        <div class="doc">000148372/1</div><div class="forn">Bebidas Primavera<br>Cleber S.</div>
+        <div class="prog"><div class="trilho"><div class="preen" style="width:75%"></div></div>
+        <div class="tempo"><span>3 de 4 itens</span><b>00:22</b></div></div>
+      </div>
+      <div class="doca estourou">
+        <div class="n">Doca 2</div><div class="est e-conf">Em conferência</div>
+        <div class="doc">000147901/1</div><div class="forn">Laticínios Serra Azul<br>Marcos T.</div>
+        <div class="prog"><div class="trilho"><div class="preen at" style="width:35%"></div></div>
+        <div class="tempo"><span>7 de 20 itens</span><b>03:41</b></div></div>
+      </div>
+      <div class="doca">
+        <div class="n">Doca 3</div><div class="est e-agu">Aguardando</div>
+        <div class="doc">000148415/2</div><div class="forn">Higiene Total Dist.<br>—</div>
+        <div class="prog"><div class="trilho"></div>
+        <div class="tempo"><span>12 itens na nota</span><b>00:04</b></div></div>
+      </div>
+      <div class="doca">
+        <div class="n">Doca 4</div><div class="est e-livre">Livre</div>
+        <div class="doc" style="color:#A9A395">—</div><div class="forn">Última: 000147744/1<br>fechada 05:58</div>
+        <div class="prog"><div class="trilho"></div><div class="tempo"><span>&nbsp;</span><b>&nbsp;</b></div></div>
+      </div>
+    </div>
+  </div>
+  <p class="nota">Ordenado por <b>tempo de doca aberta</b>. A doca 2 estourou o limite e o número vira carimbo. Fluxo e gargalo, nunca percentual de ocupação.</p>
+
+</div>
+</body>
+</html>

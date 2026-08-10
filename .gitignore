@@ -1,0 +1,13 @@
+# Instalação do BMAD por ferramenta — reproduzível com `npx bmad-method install`
+.claude/
+
+# Build
+node_modules/
+bin/
+obj/
+dist/
+.angular/
+
+# Ambiente
+.env
+*.user

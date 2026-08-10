@@ -1,55 +1,94 @@
-# Mundial - Conferência — Build Plan
+# Mundial · Conferência de Recebimento
 
-Hi! 👋 This folder is **not** the finished app yet. It is a **plan** — like a box of
-LEGO instructions — that tells a smart robot helper exactly how to build the app.
+Modernização do sistema de conferência de recebimento de mercadoria do **Supermercados Mundial** —
+do legado em Visual FoxPro (`dun14.SCX`, escrito em 2011, remendado até 2021) para uma base que a
+Mundial consiga manter, auditar e evoluir.
 
-A long time ago someone wrote this program in an old computer language. A tool called
-**RNC** read that old program, figured out what it does, and wrote everything down here
-in plain steps. Now a robot helper called **BMAD** can read the steps and build a brand
-new, modern version for you.
+Este repositório contém o **planejamento**. O código ainda não foi escrito.
 
-## What is in this folder?
+## O que o sistema faz
 
-- **README.md** — this page (start here).
-- **docs/product-brief.md** — what the app is for, in a few sentences.
-- **docs/prd.md** — the full list of things the app must do (the "rules").
-- **docs/ux/** — what the screens look like and how people move between them.
-- **docs/architecture.md** — the building plan: the data and how pieces fit.
-- **docs/epics/** — big chunks of work, one per kind of thing the app manages.
-- **docs/stories/** — small step-by-step jobs the robot does one at a time.
+O operador de doca confere a carga que chega: bipa o documento fiscal, bipa cada produto, registra a
+quantidade recebida, fecha a conferência de forma irreversível e imprime a etiqueta da embalagem. O
+supervisor cadastra códigos de barras, libera exceções e acompanha o que foi conferido.
 
-## What will the app let people manage?
+Não é um CRUD. É uma estação de trabalho de armazém, e o valor está em preservar esse processo
+inteiro — inclusive as 70 regras de negócio que o RNC recuperou do código original.
 
-- **Conferencias**
-- **Estoqs**
+## Como isto foi produzido
 
-## How do I build the app? (3 easy steps)
-
-You need a computer with **Node.js** installed and a coding helper like
-**Cursor** or **Claude Code**. Then:
-
-**Step 1 — Get the BMAD robot helper.** Open a terminal in this folder and type:
-
-```bash
-npx bmad-method install
+```
+legado Visual FoxPro  →  RNC (engenharia reversa)  →  UIR  →  planejamento BMAD  →  código
+                                                              ▲ você está aqui
 ```
 
-Press Enter and wait. This downloads the helper. (It is free and safe.)
+O **RNC** leu o legado e produziu o UIR — telas, modelo de dados, 70 regras de negócio com chaves
+estáveis `RK-…`, e o código-fonte retido. O **BMAD** transformou isso em requisitos, arquitetura e
+stories. Cada regra implementada carrega sua chave, e pode ser conferida contra a fonte legada com
+`getRule()` do MCP do RNC.
 
-**Step 2 — Open this folder in your coding helper** (Cursor or Claude Code).
+## Documentos de planejamento
 
-**Step 3 — Ask the helper to build it.** Tell the **Dev** agent:
+Tudo em **`_bmad-output/planning-artifacts/`**:
 
-> Read `docs/prd.md`, `docs/architecture.md`, and every file in `docs/stories/`,
-> then build the whole app exactly as the stories describe. Do one story at a time.
+| Documento | Conteúdo |
+| --- | --- |
+| **`prds/prd-poc-mundial-2026-08-10/prd.md`** | 54 requisitos funcionais, 12 não-funcionais, 3 jornadas de usuário |
+| **`architecture/architecture-poc-mundial-2026-08-10/ARCHITECTURE-SPINE.md`** | 21 decisões de arquitetura (`AD-1`…`AD-21`) |
+| **`epics.md`** | 5 épicos, 30 stories com critérios de aceite testáveis |
+| `achados-fonte-legada.md` | O que a leitura do FoxPro original revelou — e o que desmentiu |
+| `uir-gap-report.md` | As 7 divergências entre o UIR e o pacote gerado automaticamente |
 
-That's it! The robot will write the code for you. When it finishes, run the app and try it.
+⚠️ **`docs/historico-rnc/` não serve para construir.** É o pacote gerado automaticamente,
+preservado por rastreabilidade. Contém erros que produziriam o aplicativo errado — veja
+`docs/README.md`.
 
-## The app will be built with
+## Stack
 
-- Screens (frontend): angular
-- Brains (backend): dotnet-core + prisma
-- Memory (database): sqlserver
+| Camada | Tecnologia |
+| --- | --- |
+| Frontend | Angular 22 · TypeScript 6 · Node 24 LTS |
+| Backend | .NET 10 (LTS) · C# 14 · Dapper 2.1.79 |
+| Banco | SQL Server 2022 · migrations com DbUp |
+| Entrega | Docker Compose |
+
+Arquitetura em **ports & adapters**, com o domínio isolado e as 70 regras testáveis sem banco.
+
+## Como construir
+
+Você precisa de um agente de codificação com o BMAD instalado neste repositório.
+
+```bash
+npx bmad-method install     # se ainda não estiver instalado
+```
+
+Depois, em ordem:
+
+1. **`bmad-ux`** — produz o contrato de UX (design e experiência).
+2. **`bmad-sprint-planning`** — verifica a prontidão e gera o acompanhamento de sprint.
+3. **`bmad-build`** — implementa uma story por vez, na ordem dos épicos.
+
+Rode cada skill em uma janela de contexto nova. Se estiver perdido, invoque **`bmad-help`**.
+
+### Regras que valem para quem implementa
+
+- O **spine de arquitetura** é vinculante. Uma story nunca contraria um `AD`.
+- Toda regra de negócio implementada cita seu `RK-…`, e tem um teste que cita a mesma chave.
+- Nomes de tabela e coluna vêm da fonte legada, sem renomear. A única exceção autorizada é de
+  segurança (`senha` → `senha_hash`).
+- A aplicação é toda em **Português do Brasil**, reaproveitando o texto literal das mensagens do
+  legado.
+
+## Estado atual
+
+Planejamento concluído em 2026-08-10. Cobertura verificada por script: **54/54** requisitos
+funcionais e **68/70** regras do UIR mapeadas em stories — as duas restantes são erro de conexão
+ODBC do legado, sem equivalente no sistema novo.
+
+Cinco perguntas seguem em aberto, registradas na seção 9 do PRD. A de maior peso é **Q-1**: se a
+quantidade relançada soma ao acumulado ou substitui. Decidimos "substitui" com base na estrutura do
+dado, mas sem confirmação de alguém que opere o legado.
 
 ---
-_Made by RNC from a legacy app. Plan format: BMAD method (https://github.com/bmad-code-org)._
+
+_Legado analisado por RNC · planejamento pelo método BMAD._

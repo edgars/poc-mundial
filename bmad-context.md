@@ -11,11 +11,17 @@ This repository was produced by **RNC** (Reengineering New Code) from a legacy a
 
 ## Instructions for the Dev agent
 
-- Treat `docs/prd.md` as the source of truth for behavior.
-- Follow `docs/architecture.md` for structure; do not invent a different stack.
-- Implement stories under `docs/stories/` one at a time, in order.
-- **Reference tables** (none) get a read-only list API and are used as dropdowns inside the managed entities — do NOT scaffold create/edit/delete screens for them.
-- Requirements tagged **NEEDS REVIEW** are ambiguous in the legacy source: implement a best-effort version and leave a `// TODO` noting what a human must confirm.
+> ⚠️ **Estas instruções foram substituídas.** O pacote original em `docs/` continha erros que
+> produziriam o aplicativo errado — chave primária composta descartada, colunas de formulário
+> tratadas como colunas de tabela, e 4 das 6 entidades fora do escopo. Ele foi movido para
+> `docs/historico-rnc/` e permanece apenas por rastreabilidade.
+
+- A fonte de verdade de comportamento é **`_bmad-output/planning-artifacts/prds/prd-poc-mundial-2026-08-10/prd.md`**.
+- A estrutura segue o **`ARCHITECTURE-SPINE.md`** em `_bmad-output/planning-artifacts/architecture/` — 21 decisões vinculantes. Não invente outra stack: .NET 10 + Dapper + Angular 22 + SQL Server.
+- As stories estão em **`_bmad-output/planning-artifacts/epics.md`** — 5 épicos, 30 stories. Implemente uma por vez, na ordem.
+- Antes de tratar o schema, leia **`achados-fonte-legada.md`**: os tipos e larguras reais vieram do DDL e da estrutura do DBF, não do `getErModel` (que devolveu 6 das 116 colunas de `estoq`, todas como `UNKNOWN`).
+- O sistema tem **6 entidades**, não 2: `conferencia`, `estoq`, `forne`, `usuario`, `acesso`, `log_even`. As linhas de `conferencia` nascem da integração da nota fiscal — nenhum caminho da aplicação as cria.
+- **Nenhuma das 70 regras é NEEDS REVIEW** neste workspace — todas vêm marcadas `COMPLETE` e `isUnambiguous`. As ambiguidades reais estão registradas como perguntas abertas na seção 9 do PRD; cada uma tem uma decisão fundamentada e um `// TODO` no ponto do código.
 - **Precedence:** author directives (below) > explicit canvas configuration > derived decisions > defaults. When a directive contradicts a derived value, the directive wins.
 
 ## Target stack
@@ -40,10 +46,10 @@ A aplicação é toda em Português do Brasil
 
 Values below were derived automatically from the Architecture Canvas — the agent follows them; the author can override any of them with a directive.
 
-- Backend language: typescript (derived from runtime dotnet-core)
-- Validation: zod (derived from runtime)
-- ORM: prisma (from canvas edge label or runtime default)
-- Migrations: prisma-migrate (consistent with the ORM)
+- ~~Backend language: typescript~~ — **superado**: a stack é .NET 10 + C# 14 (ver `AD-1` e a seção Stack do spine)
+- ~~Validation: zod~~ — **superado**: FluentValidation 12.1.1
+- ~~ORM: prisma~~ — **superado**: Dapper 2.1.79. Prisma é ORM de Node e não roda em .NET; a combinação do canvas era impossível
+- ~~Migrations: prisma-migrate~~ — **superado**: DbUp (`dbup-sqlserver` 7.2.0), SQL literal versionado
 - Frontend → API wiring: the frontend reads the API base URL from an `API_URL` environment variable (on docker-compose this resolves to the API service name; derived from the Frontend → API connection on the canvas)
 - CORS: allow only the frontend origin (derived from the same connection)
 - Environment: `.env` file with a committed `.env.example` documenting every variable

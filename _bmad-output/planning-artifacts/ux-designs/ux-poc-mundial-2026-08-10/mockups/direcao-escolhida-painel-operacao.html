@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Direção C — Painel de Operação</title>
+<style>
+/* ---- DIREÇÃO C · PAINEL DE OPERAÇÃO ----
+   fundo     #0F1417  ardósia profunda
+   card      #182027
+   card-alto #1F2A32
+   linha     #2C3A44
+   texto     #E8EEF2
+   fraco     #8FA3B0
+   ciano     #3DD6D0  acento primário / foco
+   verde     #34D399  aceite
+   ambar     #FBBF24  atenção
+   vermelho  #F87171  recusa
+   ------------------------------------------ */
+  :root{
+    --fundo:#0F1417; --card:#182027; --card-alto:#1F2A32; --linha:#2C3A44;
+    --texto:#E8EEF2; --fraco:#8FA3B0; --ciano:#3DD6D0; --verde:#34D399; --ambar:#FBBF24; --vermelho:#F87171;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --r:10px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#0A0E10;color:var(--texto);font-family:var(--sans);font-size:15px;line-height:1.5}
+  .pagina{max-width:1180px;margin:0 auto;padding:32px 24px 80px}
+  .cabeca{padding-bottom:18px;margin-bottom:8px;border-bottom:1px solid var(--linha)}
+  .cabeca h1{font-size:29px;margin:0 0 10px;letter-spacing:-.02em;font-weight:600}
+  .cabeca p{color:var(--fraco);max-width:70ch;margin:0;font-size:15px;line-height:1.65}
+  h2.sec{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--ciano);margin:44px 0 12px;font-weight:400}
+
+  .frame{background:var(--fundo);border:1px solid var(--linha);border-radius:var(--r);overflow:hidden}
+  .barra{background:var(--card);border-bottom:1px solid var(--linha);padding:11px 16px;font-size:12px;color:var(--fraco);display:flex;gap:16px;align-items:center}
+  .barra b{color:var(--texto);font-weight:600}
+  .barra .pt{margin-left:auto;font-family:var(--mono);font-size:11px}
+
+  .conf{display:grid;grid-template-columns:1fr 330px;gap:14px;padding:14px}
+  .ctx{display:flex;gap:10px;margin-bottom:12px}
+  .chip{background:var(--card);border:1px solid var(--linha);border-radius:8px;padding:9px 13px;flex:1}
+  .chip span{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--fraco)}
+  .chip b{display:block;font-size:17px;font-weight:600;margin-top:3px;letter-spacing:-.01em}
+
+  .leitura{background:var(--card);border:1px solid var(--ciano);border-radius:10px;padding:14px 16px;box-shadow:0 0 0 3px rgba(61,214,208,.13)}
+  .leitura label{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ciano)}
+  .campo{margin-top:7px;font-family:var(--mono);font-size:29px;letter-spacing:.05em;display:flex;justify-content:space-between;align-items:center}
+  .cursor{width:12px;height:26px;background:var(--ciano);border-radius:1px}
+
+  .lista{margin-top:12px;background:var(--card);border:1px solid var(--linha);border-radius:10px;overflow:hidden}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th{text-align:left;font-weight:500;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--fraco);padding:10px 14px;background:var(--card-alto)}
+  td{padding:11px 14px;border-top:1px solid var(--linha);font-variant-numeric:tabular-nums}
+  td.num{text-align:right;font-family:var(--mono)}
+  td.cod{font-family:var(--mono);font-size:12px;color:var(--fraco)}
+  .pill{display:inline-block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:999px;font-weight:600}
+  .p-ok{background:rgba(52,211,153,.16);color:var(--verde)}
+  .p-div{background:rgba(251,191,36,.16);color:var(--ambar)}
+  .p-agu{background:rgba(143,163,176,.14);color:var(--fraco)}
+  tr.div{background:rgba(251,191,36,.05)}
+
+  .focal{background:var(--card);border:1px solid var(--linha);border-radius:10px;padding:16px;display:flex;flex-direction:column}
+  .selo{border-radius:8px;padding:9px;text-align:center;font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;background:rgba(52,211,153,.15);color:var(--verde);border:1px solid rgba(52,211,153,.4)}
+  .selo.err{background:rgba(248,113,113,.14);color:var(--vermelho);border-color:rgba(248,113,113,.4)}
+  .desc{font-size:23px;line-height:1.22;margin:18px 0 5px;font-weight:600;letter-spacing:-.02em}
+  .emb{color:var(--fraco);font-size:13px;font-family:var(--mono)}
+  .qtd{margin-top:22px;padding-top:16px;border-top:1px solid var(--linha)}
+  .qtd span{font-size:10px;letter-spacing:.14em;color:var(--fraco);text-transform:uppercase}
+  .qtd b{display:block;font-family:var(--mono);font-size:56px;line-height:1;font-weight:600;margin-top:5px;letter-spacing:-.03em}
+  .hist{margin-top:auto;padding-top:18px;font-size:12px;color:var(--fraco);line-height:1.9;font-family:var(--mono)}
+  .hist i{font-style:normal;color:var(--texto)}
+
+  .docas{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:14px}
+  .doca{background:var(--card);border:1px solid var(--linha);border-radius:10px;padding:15px;min-height:215px;display:flex;flex-direction:column}
+  .doca.foco{border-color:var(--ambar);box-shadow:0 0 0 3px rgba(251,191,36,.12)}
+  .doca .n{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--fraco)}
+  .doca .doc{margin-top:13px;font-size:19px;font-weight:600;letter-spacing:-.01em}
+  .doca .forn{color:var(--fraco);font-size:12px;margin-top:3px;line-height:1.4}
+  .prog{margin-top:auto;padding-top:14px}
+  .trilho{height:6px;background:#0F1417;border-radius:999px;overflow:hidden}
+  .preen{height:100%;background:var(--verde);border-radius:999px}
+  .preen.at{background:var(--ambar)}
+  .tempo{font-size:11px;color:var(--fraco);margin-top:8px;display:flex;justify-content:space-between;font-family:var(--mono)}
+  .estourou .tempo b{color:var(--vermelho);font-weight:600}
+  .nota{color:var(--fraco);font-size:14px;margin-top:12px;line-height:1.7;max-width:76ch}
+  .nota b{color:var(--ciano);font-weight:600}
+</style>
+</head>
+<body>
+<div class="pagina">
+
+  <div class="cabeca">
+    <h1>Direção C · Painel de Operação</h1>
+    <p>O registro do software de operação contemporâneo — a família visual de quem já usou um painel de logística moderno. Ardósia escura, cantos suaves, estado codificado em pílula de cor, e um ciano que só aparece onde está o foco do teclado. Densidade média-alta: respira mais que a Direção A sem virar dashboard decorativo. É a que melhor comporta movimento fluido e transição de rota.</p>
+  </div>
+
+  <h2 class="sec">Conferência de recebimento · doca 3</h2>
+  <div class="frame">
+    <div class="barra"><b>Conferência</b><span>Doca 3</span><span class="pt">CLEBER S. · 04127 · 06:41</span></div>
+    <div class="conf">
+      <div>
+        <div class="ctx">
+          <div class="chip"><span>Documento</span><b>000148372/1</b></div>
+          <div class="chip"><span>Fornecedor</span><b>Bebidas Primavera</b></div>
+          <div class="chip"><span>Itens</span><b>3 / 4</b></div>
+        </div>
+        <div class="leitura">
+          <label>Bipe o código</label>
+          <div class="campo"><span>7891234567897</span><span class="cursor"></span></div>
+        </div>
+        <div class="lista">
+          <table>
+            <thead><tr><th>Cód</th><th>Produto</th><th class="num">Nota</th><th class="num">Recebido</th><th></th></tr></thead>
+            <tbody>
+              <tr><td class="cod">04127</td><td>Refrigerante Cola 2L</td><td class="num">40</td><td class="num">40</td><td><span class="pill p-ok">ok</span></td></tr>
+              <tr class="div"><td class="cod">04982</td><td>Cerveja Pilsen Lata 350ml</td><td class="num">120</td><td class="num">114</td><td><span class="pill p-div">−6</span></td></tr>
+              <tr><td class="cod">05310</td><td>Água Mineral s/ Gás 500ml</td><td class="num">60</td><td class="num">60</td><td><span class="pill p-ok">ok</span></td></tr>
+              <tr><td class="cod">05877</td><td style="color:var(--fraco)">Suco Uva Integral 1L</td><td class="num">24</td><td class="num" style="color:var(--fraco)">—</td><td><span class="pill p-agu">aguarda</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="focal">
+        <div class="selo">Código aceito</div>
+        <div class="desc">Refrigerante Cola 2L</div>
+        <div class="emb">CX c/ 6 · DUN-14 17891234567894</div>
+        <div class="qtd"><span>Quantidade recebida</span><b>40</b></div>
+        <div class="hist">Anteriores<br><i>05310 · ok · 60 un</i><br><i>04982 · diverge · −6</i></div>
+      </div>
+    </div>
+  </div>
+  <p class="nota">Estado variante — recusa no <b>mesmo bloco, mesma posição</b>. Só a cor da pílula e o texto mudam.</p>
+  <div class="frame" style="max-width:340px;padding:14px">
+    <div class="focal" style="min-height:0;border:0;padding:0;background:none">
+      <div class="selo err">Código não cadastrado</div>
+      <div class="desc" style="font-size:17px;color:var(--fraco);font-weight:500">Nenhum produto responde a 7899999000123</div>
+      <div class="emb">Item marcado como pendente</div>
+    </div>
+  </div>
+
+  <h2 class="sec">Painel de docas · recebimento</h2>
+  <div class="frame">
+    <div class="barra"><b>Docas</b><span>Recebimento</span><span class="pt">ROSANA M. · atualiza sozinho</span></div>
+    <div class="docas">
+      <div class="doca">
+        <div class="n">Doca 1 · <span class="pill p-ok">em conferência</span></div>
+        <div class="doc">000148372/1</div><div class="forn">Bebidas Primavera<br>Cleber S.</div>
+        <div class="prog"><div class="trilho"><div class="preen" style="width:75%"></div></div>
+        <div class="tempo"><span>3 de 4 itens</span><b>00:22</b></div></div>
+      </div>
+      <div class="doca foco estourou">
+        <div class="n">Doca 2 · <span class="pill p-div">atrasada</span></div>
+        <div class="doc">000147901/1</div><div class="forn">Laticínios Serra Azul<br>Marcos T.</div>
+        <div class="prog"><div class="trilho"><div class="preen at" style="width:35%"></div></div>
+        <div class="tempo"><span>7 de 20 itens</span><b>03:41</b></div></div>
+      </div>
+      <div class="doca">
+        <div class="n">Doca 3 · <span class="pill p-agu">aguardando</span></div>
+        <div class="doc">000148415/2</div><div class="forn">Higiene Total Dist.<br>—</div>
+        <div class="prog"><div class="trilho"></div>
+        <div class="tempo"><span>12 itens na nota</span><b>00:04</b></div></div>
+      </div>
+      <div class="doca">
+        <div class="n">Doca 4 · <span class="pill p-agu">livre</span></div>
+        <div class="doc" style="color:var(--fraco)">—</div><div class="forn">Última: 000147744/1<br>fechada 05:58</div>
+        <div class="prog"><div class="trilho"></div><div class="tempo"><span>&nbsp;</span><b>&nbsp;</b></div></div>
+      </div>
+    </div>
+  </div>
+  <p class="nota">Ordenado por <b>tempo de doca aberta</b>. A doca 2 ganha anel âmbar ao estourar o limite e sobe de posição deslizando. Clicar leva à conferência com <b>transição contínua</b> — o cartão vira o cabeçalho da tela.</p>
+
+</div>
+</body>
+</html>

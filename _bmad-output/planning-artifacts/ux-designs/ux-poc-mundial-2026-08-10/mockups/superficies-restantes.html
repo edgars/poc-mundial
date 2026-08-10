@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Superfícies restantes — Entrar · Códigos · Consultas</title>
+<style>
+  :root{
+    --surface-base:#0F1417; --surface-raised:#182027; --surface-overlay:#1F2A32;
+    --border:#2C3A44; --border-strong:#3E5262;
+    --text:#E8EEF2; --text-muted:#8FA3B0; --text-disabled:#5B6D78;
+    --focus:#3DD6D0; --focus-glow:rgba(61,214,208,.13);
+    --accept:#34D399; --accept-wash:rgba(52,211,153,.16);
+    --attention:#FBBF24; --attention-wash:rgba(251,191,36,.16);
+    --reject:#F87171; --reject-wash:rgba(248,113,113,.14);
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#0A0E10;color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.5}
+  .pagina{max-width:1180px;margin:0 auto;padding:32px 24px 80px}
+  h1{font-size:29px;margin:0 0 8px;letter-spacing:-.02em;font-weight:600}
+  .lead{color:var(--text-muted);max-width:70ch;margin:0 0 8px;font-size:15px}
+  h2.sec{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--focus);margin:44px 0 12px;font-weight:400}
+  .frame{background:var(--surface-base);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+  .barra{background:var(--surface-raised);border-bottom:1px solid var(--border);padding:11px 16px;font-size:12px;color:var(--text-muted);display:flex;gap:16px;align-items:center}
+  .barra b{color:var(--text);font-weight:600}
+  .barra .pt{margin-left:auto;font-family:var(--mono);font-size:11px}
+  .nota{color:var(--text-muted);font-size:14px;margin-top:12px;line-height:1.7;max-width:76ch}
+  .nota b{color:var(--focus);font-weight:600}
+  label.rot{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);display:block}
+  .pill{display:inline-block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:999px;font-weight:600}
+  .p-ok{background:var(--accept-wash);color:var(--accept)}
+  .p-div{background:var(--attention-wash);color:var(--attention)}
+  .p-agu{background:rgba(143,163,176,.14);color:var(--text-muted)}
+  .p-err{background:var(--reject-wash);color:var(--reject)}
+
+  /* ENTRAR */
+  .entrar{min-height:400px;display:grid;place-items:center;padding:40px}
+  .cartao-login{width:390px;background:var(--surface-raised);border:1px solid var(--border);border-radius:12px;padding:28px}
+  .marca-l{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--text-muted)}
+  .cartao-login h3{font-size:23px;font-weight:600;letter-spacing:-.02em;margin:8px 0 22px}
+  .campo-f{margin-bottom:16px}
+  .inp{margin-top:6px;background:var(--surface-base);border:1px solid var(--border);border-radius:8px;padding:12px 14px;font-family:var(--mono);font-size:20px;letter-spacing:.05em;color:var(--text)}
+  .inp.foco{border-color:var(--focus);box-shadow:0 0 0 3px var(--focus-glow)}
+  .cursor{display:inline-block;width:11px;height:22px;background:var(--focus);vertical-align:-4px}
+  .btn{width:100%;margin-top:8px;background:var(--focus);color:#08201F;border:0;border-radius:8px;padding:13px;font-size:15px;font-weight:600;font-family:var(--sans)}
+  .erro-l{margin-top:14px;background:var(--reject-wash);border:1px solid rgba(248,113,113,.4);color:var(--reject);border-radius:8px;padding:10px 12px;font-size:13px}
+
+  /* CODIGOS */
+  .cod{display:grid;grid-template-columns:1fr 330px;gap:14px;padding:14px}
+  .bloco{background:var(--surface-raised);border:1px solid var(--border);border-radius:10px;padding:16px}
+  .bloco h4{margin:0 0 14px;font-size:13px;font-weight:600;letter-spacing:.02em}
+  .grade2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .inp-s{margin-top:5px;background:var(--surface-base);border:1px solid var(--border);border-radius:8px;padding:9px 11px;font-family:var(--mono);font-size:15px;color:var(--text)}
+  .inp-s.err{border-color:var(--reject)}
+  .msg-err{color:var(--reject);font-size:12px;margin-top:5px;line-height:1.4}
+  .etiq{background:#fff;color:#000;border-radius:6px;padding:14px;margin-top:10px;font-family:var(--mono);text-align:center}
+  .barras{height:52px;background:repeating-linear-gradient(90deg,#000 0 2px,#fff 2px 4px,#000 4px 7px,#fff 7px 9px,#000 9px 10px,#fff 10px 14px);margin:8px 0}
+  .zpl{margin-top:10px;background:var(--surface-base);border:1px solid var(--border);border-radius:8px;padding:10px;font-family:var(--mono);font-size:11px;color:var(--text-muted);line-height:1.6;white-space:pre-wrap}
+
+  /* CONSULTAS */
+  .filtros{display:flex;gap:10px;padding:14px 14px 0}
+  .filtro{background:var(--surface-raised);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--text-muted)}
+  .filtro.ativo{border-color:var(--focus);color:var(--text);box-shadow:0 0 0 3px var(--focus-glow)}
+  .filtro b{color:var(--text);font-weight:600}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th{text-align:left;font-weight:500;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);padding:10px 14px;background:var(--surface-overlay)}
+  td{padding:11px 14px;border-top:1px solid var(--border);font-variant-numeric:tabular-nums}
+  td.num{text-align:right;font-family:var(--mono)}
+  td.mono{font-family:var(--mono);font-size:13px;color:var(--text-muted)}
+  tr.sel td{background:rgba(61,214,208,.07);box-shadow:inset 2px 0 0 var(--focus)}
+  tr.div{background:rgba(251,191,36,.05)}
+  .lista{margin:14px;background:var(--surface-raised);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+</style>
+</head>
+<body>
+<div class="pagina">
+  <h1>Superfícies restantes</h1>
+  <p class="lead">Entrar, Códigos de embalagem e Consultas, na Direção C. Mesmos tokens do <code>DESIGN.md</code>: ardósia, ciano só no foco, pílula de estado com cor e texto.</p>
+
+  <h2 class="sec">Entrar · /entrar</h2>
+  <div class="frame">
+    <div class="barra"><b>Mundial · Conferência</b><span class="pt">06:38</span></div>
+    <div class="entrar">
+      <div class="cartao-login">
+        <div class="marca-l">Supermercados Mundial</div>
+        <h3>Conferência de Recebimento</h3>
+        <div class="campo-f">
+          <label class="rot">Matrícula</label>
+          <div class="inp foco">04127<span class="cursor"></span></div>
+        </div>
+        <div class="campo-f">
+          <label class="rot">Senha</label>
+          <div class="inp">••••••</div>
+        </div>
+        <button class="btn">Entrar</button>
+        <div class="erro-l">Matrícula não cadastrada! Favor contactar supervisor</div>
+      </div>
+    </div>
+  </div>
+  <p class="nota">A mensagem de erro é <b>o texto literal do legado</b>, acentuação inclusive. O foco entra na matrícula ao carregar — quem trabalha na doca digita e dá Enter, sem tocar no mouse.</p>
+
+  <h2 class="sec">Códigos de embalagem · /codigos</h2>
+  <div class="frame">
+    <div class="barra"><b>Códigos de embalagem</b><span>Produto 04982</span><span class="pt">ROSANA M. · supervisão</span></div>
+    <div class="cod">
+      <div>
+        <div class="bloco">
+          <h4>Produto</h4>
+          <div class="grade2">
+            <div><label class="rot">Código</label><div class="inp-s">04982</div></div>
+            <div><label class="rot">Embalagem</label><div class="inp-s">CX c/ 12</div></div>
+          </div>
+          <div style="margin-top:12px"><label class="rot">Descrição</label><div class="inp-s">CERVEJA PILSEN LATA 350ML</div></div>
+        </div>
+        <div class="bloco" style="margin-top:12px">
+          <h4>Códigos DUN-14 · até três por produto</h4>
+          <div style="margin-bottom:12px"><label class="rot">Barr Emb 1</label><div class="inp-s">17891234500019</div></div>
+          <div style="margin-bottom:12px"><label class="rot">Barr Emb 2</label>
+            <div class="inp-s err foco" style="border-color:var(--reject);box-shadow:0 0 0 3px var(--reject-wash)">17891234500019</div>
+            <div class="msg-err">Este Código já esta cadastrado</div>
+          </div>
+          <div><label class="rot">Barr Emb 3</label><div class="inp-s" style="color:var(--text-disabled)">vazio</div></div>
+        </div>
+      </div>
+      <div class="bloco">
+        <h4>Prévia da etiqueta</h4>
+        <div class="etiq">
+          <div style="font-size:13px;font-weight:700">CERVEJA PILSEN LATA 350ML</div>
+          <div class="barras"></div>
+          <div style="font-size:11px">17891234500019</div>
+          <div style="font-size:12px;margin-top:6px">CX c/ 12</div>
+        </div>
+        <div class="zpl">^XA
+^FO510,40^A0R,150,36^FD…^FS
+^FO420,360^A0R,100,50^FD…^FS
+^FO210,270^BCR,200,Y,N,N^FD…^FS
+^XZ</div>
+      </div>
+    </div>
+  </div>
+  <p class="nota">O erro aparece <b>no campo que o causou</b>, não num resumo no topo — a regra é de duplicidade cruzada entre os três campos, então localizar importa. A prévia da etiqueta fica ao lado, e o ZPL cru colapsa para inspeção.</p>
+
+  <h2 class="sec">Consultas · /consultas</h2>
+  <div class="frame">
+    <div class="barra"><b>Consultas</b><span>Conferências</span><span class="pt">ROSANA M. · turno de 10/08</span></div>
+    <div class="filtros">
+      <div class="filtro ativo">Período <b>10/08 · 06h–14h</b></div>
+      <div class="filtro">Doca <b>todas</b></div>
+      <div class="filtro">Situação <b>todas</b></div>
+      <div class="filtro" style="margin-left:auto">Buscar <b>/</b></div>
+    </div>
+    <div class="lista">
+      <table>
+        <thead><tr><th>Documento</th><th>Fornecedor</th><th>Doca</th><th>Conferiu</th><th>Fechou</th><th class="num">Itens</th><th>Situação</th></tr></thead>
+        <tbody>
+          <tr class="sel div"><td class="mono">000147901/1</td><td>Laticínios Serra Azul</td><td class="mono">2</td><td class="mono">04310</td><td class="mono">—</td><td class="num">7/20</td><td><span class="pill p-div">diverge</span></td></tr>
+          <tr><td class="mono">000148372/1</td><td>Bebidas Primavera</td><td class="mono">1</td><td class="mono">04127</td><td class="mono">04127</td><td class="num">4/4</td><td><span class="pill p-ok">fechada</span></td></tr>
+          <tr><td class="mono">000147744/1</td><td>Higiene Total Dist.</td><td class="mono">4</td><td class="mono">04127</td><td class="mono">04127</td><td class="num">9/9</td><td><span class="pill p-ok">fechada</span></td></tr>
+          <tr><td class="mono">000148415/2</td><td>Higiene Total Dist.</td><td class="mono">3</td><td class="mono">—</td><td class="mono">—</td><td class="num">0/12</td><td><span class="pill p-agu">aguardando</span></td></tr>
+          <tr class="div"><td class="mono">000147650/1</td><td>Panificadora Aurora</td><td class="mono">1</td><td class="mono">04982</td><td class="mono">04982</td><td class="num">6/6</td><td><span class="pill p-div">diverge</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <p class="nota">Densidade alta, sem faixa alternada — separação por borda. A linha com foco de teclado ganha <b>filete ciano à esquerda</b>, não fundo colorido, para não brigar com o âmbar da divergência. Setas navegam, Enter abre, <b>/</b> vai para a busca.</p>
+
+</div>
+</body>
+</html>

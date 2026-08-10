@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Direção A — Terminal Industrial</title>
+<style>
+/* ---- DIREÇÃO A · TERMINAL INDUSTRIAL ----
+   tinta      #0E1110   preto esverdeado
+   chapa      #1A1F1B   superfície
+   chapa-alta #232A24
+   linha      #38423A
+   texto      #DDE4DC
+   texto-fraco#8B968A
+   ambar      #FFB020   sinalização / atenção
+   verde      #4ADE80   aceite
+   vermelho   #FF5A47   recusa
+   ------------------------------------------ */
+  :root{
+    --tinta:#0E1110; --chapa:#1A1F1B; --chapa-alta:#232A24; --linha:#38423A;
+    --texto:#DDE4DC; --fraco:#8B968A; --ambar:#FFB020; --verde:#4ADE80; --vermelho:#FF5A47;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#0A0C0A;color:var(--texto);font-family:var(--mono);font-size:15px;line-height:1.4}
+  .pagina{max-width:1180px;margin:0 auto;padding:32px 24px 80px}
+  .cabeca{border-bottom:2px solid var(--ambar);padding-bottom:18px;margin-bottom:8px}
+  .cabeca h1{font-size:26px;letter-spacing:-.01em;margin:0 0 10px;text-transform:uppercase}
+  .cabeca p{color:var(--fraco);max-width:70ch;margin:0;font-size:14px;line-height:1.6}
+  h2.sec{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--ambar);margin:44px 0 12px;font-weight:400}
+
+  .frame{border:1px solid var(--linha);background:var(--chapa);overflow:hidden}
+  .barra{background:var(--chapa-alta);border-bottom:1px solid var(--linha);padding:7px 12px;font-size:11px;color:var(--fraco);display:flex;gap:14px;letter-spacing:.08em}
+  .barra b{color:var(--texto);font-weight:400}
+
+  /* --- tela conferência --- */
+  .conf{display:grid;grid-template-columns:1fr 330px;min-height:460px}
+  .esq{border-right:1px solid var(--linha)}
+  .ctx{padding:14px 16px;border-bottom:1px solid var(--linha);display:flex;gap:28px;font-size:12px}
+  .ctx span{color:var(--fraco);letter-spacing:.08em}
+  .ctx b{display:block;color:var(--texto);font-size:17px;font-weight:400;margin-top:3px}
+
+  .leitura{padding:20px 16px;border-bottom:1px solid var(--linha)}
+  .leitura label{font-size:11px;letter-spacing:.2em;color:var(--ambar);text-transform:uppercase}
+  .campo{margin-top:8px;background:#0A0C0A;border:2px solid var(--ambar);padding:14px 16px;font-size:30px;letter-spacing:.06em;color:var(--texto);display:flex;align-items:center;justify-content:space-between}
+  .cursor{width:14px;height:30px;background:var(--ambar)}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;font-weight:400;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--fraco);padding:9px 16px;border-bottom:1px solid var(--linha)}
+  td{padding:10px 16px;border-bottom:1px solid #262E27;font-variant-numeric:tabular-nums}
+  td.num{text-align:right}
+  tr.div td{background:rgba(255,176,32,.07)}
+  .marca{color:var(--ambar)}
+  .ok{color:var(--verde)}
+
+  /* --- painel focal --- */
+  .focal{padding:16px;display:flex;flex-direction:column;gap:0}
+  .focal .selo{border:2px solid var(--verde);color:var(--verde);padding:8px;text-align:center;font-size:13px;letter-spacing:.2em;text-transform:uppercase}
+  .focal .selo.err{border-color:var(--vermelho);color:var(--vermelho)}
+  .focal .desc{font-size:22px;line-height:1.25;margin:16px 0 4px}
+  .focal .emb{color:var(--fraco);font-size:13px}
+  .focal .qtd{margin-top:22px;padding-top:16px;border-top:1px solid var(--linha)}
+  .focal .qtd span{font-size:10px;letter-spacing:.18em;color:var(--fraco);text-transform:uppercase}
+  .focal .qtd b{display:block;font-size:56px;line-height:1;font-weight:400;margin-top:6px}
+  .cods{margin-top:auto;padding-top:18px;font-size:11px;color:var(--fraco);line-height:1.9}
+  .cods i{font-style:normal;color:var(--texto)}
+
+  /* --- painel de docas --- */
+  .docas{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--linha)}
+  .doca{background:var(--chapa);padding:16px;min-height:210px;display:flex;flex-direction:column}
+  .doca .n{font-size:10px;letter-spacing:.2em;color:var(--fraco);text-transform:uppercase}
+  .doca .est{margin-top:6px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;display:inline-block;padding:3px 8px;border:1px solid currentColor;align-self:flex-start}
+  .e-conf{color:var(--verde)} .e-agu{color:var(--ambar)} .e-livre{color:var(--fraco)} .e-fech{color:var(--fraco)}
+  .doca .doc{margin-top:14px;font-size:18px}
+  .doca .forn{color:var(--fraco);font-size:12px;margin-top:2px;line-height:1.35}
+  .doca .prog{margin-top:auto;padding-top:14px}
+  .trilho{height:6px;background:#0A0C0A;border:1px solid var(--linha)}
+  .preen{height:100%;background:var(--verde)}
+  .preen.at{background:var(--ambar)}
+  .doca .tempo{font-size:11px;color:var(--fraco);margin-top:7px;display:flex;justify-content:space-between}
+  .doca .tempo b{font-weight:400}
+  .estourou .tempo b{color:var(--vermelho)}
+  .nota{color:var(--fraco);font-size:12px;margin-top:12px;line-height:1.7}
+  .nota b{color:var(--ambar);font-weight:400}
+</style>
+</head>
+<body>
+<div class="pagina">
+
+  <div class="cabeca">
+    <h1>Direção A · Terminal Industrial</h1>
+    <p>Herança direta do chão de armazém: isto não parece software, parece <em>equipamento</em>. Monoespaçada em tudo, contraste alto sobre chapa escura, blocos sólidos sem arredondamento, e cor estritamente funcional — âmbar sinaliza atenção, verde confirma, vermelho recusa. Densidade alta porque o operador conhece a tela de cor. O movimento é seco e curto, como relé fechando.</p>
+  </div>
+
+  <h2 class="sec">Conferência de recebimento · doca 3</h2>
+  <div class="frame">
+    <div class="barra"><b>MUNDIAL · CONFERÊNCIA</b><span>CLEBER S. · MAT 04127</span><span>06:41</span></div>
+    <div class="conf">
+      <div class="esq">
+        <div class="ctx">
+          <div><span>DOCUMENTO</span><b>000148372/1</b></div>
+          <div><span>FORNECEDOR</span><b>BEBIDAS PRIMAVERA</b></div>
+          <div><span>ITENS</span><b>3 / 4</b></div>
+        </div>
+        <div class="leitura">
+          <label>Bipe o código</label>
+          <div class="campo"><span>7891234567897</span><span class="cursor"></span></div>
+        </div>
+        <table>
+          <thead><tr><th>Cód</th><th>Produto</th><th class="num">Nota</th><th class="num">Recebido</th></tr></thead>
+          <tbody>
+            <tr><td class="marca">04127</td><td>REFRIGERANTE COLA 2L</td><td class="num">40</td><td class="num ok">40</td></tr>
+            <tr class="div"><td class="marca">04982</td><td>CERVEJA PILSEN LATA 350ML</td><td class="num">120</td><td class="num" style="color:var(--ambar)">114</td></tr>
+            <tr><td class="marca">05310</td><td>ÁGUA MINERAL S/GÁS 500ML</td><td class="num">60</td><td class="num ok">60</td></tr>
+            <tr><td style="color:var(--fraco)">05877</td><td style="color:var(--fraco)">SUCO UVA INTEGRAL 1L</td><td class="num">24</td><td class="num" style="color:var(--fraco)">—</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="focal">
+        <div class="selo">Código aceito</div>
+        <div class="desc">REFRIGERANTE<br>COLA 2L</div>
+        <div class="emb">CX c/ 6 · DUN-14 17891234567894</div>
+        <div class="qtd"><span>Quantidade recebida</span><b>40</b></div>
+        <div class="cods">
+          ESTADO ANTERIOR<br>
+          <i>05310 · aceito · 60 un</i><br>
+          <i>04982 · divergência · −6</i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="nota">Estado variante — o painel focal na recusa: <b>selo vermelho, mesma posição</b>. O operador nunca procura onde apareceu o resultado.</p>
+  <div class="frame" style="max-width:340px">
+    <div class="focal" style="min-height:0">
+      <div class="selo err">Código não cadastrado</div>
+      <div class="desc" style="color:var(--fraco);font-size:16px">Nenhum produto responde a<br>7899999000123</div>
+      <div class="emb">Item marcado como pendente</div>
+    </div>
+  </div>
+
+  <h2 class="sec">Painel de docas · recebimento</h2>
+  <div class="frame">
+    <div class="barra"><b>DOCAS</b><span>ROSANA M. · SUPERVISÃO</span><span>ATUALIZA SOZINHO</span></div>
+    <div class="docas">
+      <div class="doca">
+        <div class="n">Doca 1</div><div class="est e-conf">Em conferência</div>
+        <div class="doc">000148372/1</div><div class="forn">BEBIDAS PRIMAVERA<br>CLEBER S.</div>
+        <div class="prog"><div class="trilho"><div class="preen" style="width:75%"></div></div>
+        <div class="tempo"><span>3 de 4 itens</span><b>00:22</b></div></div>
+      </div>
+      <div class="doca estourou">
+        <div class="n">Doca 2</div><div class="est e-conf">Em conferência</div>
+        <div class="doc">000147901/1</div><div class="forn">LATICÍNIOS SERRA AZUL<br>MARCOS T.</div>
+        <div class="prog"><div class="trilho"><div class="preen at" style="width:35%"></div></div>
+        <div class="tempo"><span>7 de 20 itens</span><b>03:41</b></div></div>
+      </div>
+      <div class="doca">
+        <div class="n">Doca 3</div><div class="est e-agu">Aguardando</div>
+        <div class="doc">000148415/2</div><div class="forn">HIGIENE TOTAL DIST.<br>—</div>
+        <div class="prog"><div class="trilho"></div>
+        <div class="tempo"><span>12 itens na nota</span><b>00:04</b></div></div>
+      </div>
+      <div class="doca">
+        <div class="n">Doca 4</div><div class="est e-livre">Livre</div>
+        <div class="doc" style="color:var(--fraco)">—</div><div class="forn">Última: 000147744/1<br>fechada 05:58</div>
+        <div class="prog"><div class="trilho"></div><div class="tempo"><span>&nbsp;</span><b>&nbsp;</b></div></div>
+      </div>
+    </div>
+  </div>
+  <p class="nota">Ordenado por <b>tempo de doca aberta</b>, não por número. A doca 2 sobe quando ultrapassa — os cartões deslizam até a nova posição. Sem medidor de ocupação: o que interessa é <b>qual</b> doca e <b>há quanto tempo</b>.</p>
+
+</div>
+</body>
+</html>

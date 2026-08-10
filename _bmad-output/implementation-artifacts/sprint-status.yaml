@@ -1,0 +1,81 @@
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created, ready for development
+#   - in-progress: Developer actively working on implementation
+#   - review: Implementation complete, ready for review
+#   - done: Story completed
+
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+
+# Action Item Status:
+#   - open: Committed during a retrospective, not yet addressed
+#   - in-progress: Actively being worked on
+#   - done: Completed
+
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when its first story starts (via build's sprint sync)
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates the next story after the previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+# - Retrospective appends its action items to action_items; the status view surfaces open ones
+generated: 08-10-2026 19:45
+last_updated: 08-10-2026 19:45
+project: poc-mundial
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+development_status:
+  epic-1: backlog
+  1-1-subir-a-aplicação-de-um-checkout-limpo: backlog
+  1-2-ter-usuários-e-permissões-no-banco: backlog
+  1-3-entrar-com-matrícula-e-senha: backlog
+  1-4-ser-barrado-quando-não-tenho-autorização: backlog
+  1-5-confirmar-a-senha-ao-defini-la: backlog
+  1-6-ver-e-fazer-apenas-o-que-minha-permissão-alcança: backlog
+  1-7-ser-desconectado-depois-de-muito-tempo-parado: backlog
+  epic-1-retrospective: optional
+
+  epic-2: backlog
+  2-1-ter-documentos-e-produtos-para-conferir: backlog
+  2-2-abrir-o-documento-da-carga-que-chegou: backlog
+  2-3-bipar-o-produto-e-ver-na-hora-o-que-é: backlog
+  2-4-lançar-a-quantidade-recebida: backlog
+  2-5-apagar-um-lançamento-errado: backlog
+  2-6-finalizar-a-conferência: backlog
+  2-7-não-perder-a-contagem-de-outro-operador: backlog
+  2-8-consultar-conferências: backlog
+  epic-2-retrospective: optional
+
+  epic-3: backlog
+  3-1-cadastrar-os-códigos-de-embalagem-de-um-produto: backlog
+  3-2-impedir-código-repetido-dentro-do-mesmo-produto: backlog
+  3-3-impedir-código-que-já-é-de-outro-produto: backlog
+  3-4-apagar-um-código-de-embalagem: backlog
+  3-5-gerar-a-etiqueta-da-embalagem: backlog
+  3-6-ver-a-etiqueta-antes-de-imprimir: backlog
+  epic-3-retrospective: optional
+
+  epic-4: backlog
+  4-1-registrar-tudo-que-muda: backlog
+  4-2-consultar-fornecedor: backlog
+  4-3-ver-o-painel-de-docas: backlog
+  4-4-enxergar-a-exceção-antes-do-resto: backlog
+  4-5-ver-o-painel-se-reorganizar-sozinho: backlog
+  epic-4-retrospective: optional
+
+  epic-5: backlog
+  5-1-isolar-o-andaime-do-produto: backlog
+  5-2-plantar-os-casos-que-valem-demonstrar: backlog
+  5-3-resetar-entre-uma-apresentação-e-outra: backlog
+  5-4-ter-os-códigos-à-mão-durante-a-apresentação: backlog
+  epic-5-retrospective: optional
