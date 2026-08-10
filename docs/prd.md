@@ -1,0 +1,206 @@
+# Product Requirements Document — Mundial - Conferência
+
+## Overview
+
+This PRD specifies the functional requirements for Mundial - Conferência, a modern rebuild of a legacy system. The requirements are derived from legacy UI screens, the data model, and business rules recovered by RNC.
+
+## Goals
+
+- Preserve the behavior of the legacy system while modernizing the underlying technology stack.
+- Provide complete CRUD operations for every managed entity.
+- Expose reference data as read-only lookups.
+- Enforce all recovered business rules consistently.
+
+## Functional requirements
+
+### Entity management
+
+- **FR-01** — The system shall let a user list, create, view, edit and delete **Conferencias** records.
+  - *Acceptance:* a list page, a create form, an edit form and delete all work at `/conferencias`; required fields are validated.
+- **FR-02** — The system shall let a user list, create, view, edit and delete **Estoqs** records.
+  - *Acceptance:* a list page, a create form, an edit form and delete all work at `/estoqs`; required fields are validated.
+
+### Business rules
+
+- **FR-03** — Código não cadastrado!
+  - *Condition:* `val(this.value)>0`
+  - *Severity:* WARN · *Fields:* form
+- **FR-04** — Código não cadastrado!
+  - *Condition:* `_tally = 0`
+  - *Severity:* WARN · *Fields:* form
+- **FR-05** — Tem certeza que deseja excluir este código?
+  - *Condition:* `muda and empty(this.value) and val(estoq.barr_emb)>0`
+  - *Severity:* WARN · *Fields:* .barr_emb
+- **FR-06** — Tem certeza que deseja excluir este código?
+  - *Condition:* `messagebox('Tem certeza que deseja excluir este código?',4+32+256,sistema) = 6`
+  - *Severity:* WARN · *Fields:* form
+- **FR-07** — Este Código já esta cadastrado!
+  - *Condition:* `!empty(this.value)`
+  - *Severity:* WARN · *Fields:* .barr_emb
+- **FR-08** — Este Código já esta cadastrado!
+  - *Condition:* `(this.value = barr_emb2 or this.value = barr_emb3) and !empty(this.value)`
+  - *Severity:* WARN · *Fields:* .barr_emb
+- **FR-09** — Código já cadastrado para o Produto 
+  - *Condition:* `_tally > 0`
+  - *Severity:* WARN · *Fields:* .barr_emb
+- **FR-10** — Transicao de estado: barr_emb3 = '' (STATE_TRANSITION)
+  - *Condition:* `barr_emb3 = ''`
+  - *Severity:* WARN · *Fields:* .barr_emb3
+- **FR-11** — Tem certeza que deseja excluir este código?
+  - *Condition:* `muda and empty(this.value) and val(estoq.barr_emb2)>0`
+  - *Severity:* WARN · *Fields:* .barr_emb2
+- **FR-12** — Tem certeza que deseja excluir este código?
+  - *Condition:* `messagebox('Tem certeza que deseja excluir este código?',4+32+256,sistema) = 6`
+  - *Severity:* WARN · *Fields:* form
+- **FR-13** — Este Código já esta cadastrado
+  - *Condition:* `!empty(this.value)`
+  - *Severity:* WARN · *Fields:* .barr_emb2
+- **FR-14** — Este Código já esta cadastrado
+  - *Condition:* `(this.value = barr_emb or this.value = barr_emb3) and !empty(this.value)`
+  - *Severity:* WARN · *Fields:* .barr_emb2
+- **FR-15** — Código já cadastrado para o Produto 
+  - *Condition:* `_tally > 0`
+  - *Severity:* WARN · *Fields:* .barr_emb2
+- **FR-16** — Transicao de estado: barr_emb3 = '' (STATE_TRANSITION)
+  - *Condition:* `barr_emb3 = ''`
+  - *Severity:* WARN · *Fields:* .barr_emb3
+- **FR-17** — Tem certeza que deseja excluir este código?
+  - *Condition:* `muda and empty(this.value) and val(estoq.barr_emb2)>0`
+  - *Severity:* WARN · *Fields:* .barr_emb3
+- **FR-18** — Tem certeza que deseja excluir este código?
+  - *Condition:* `messagebox('Tem certeza que deseja excluir este código?',4+32+256,sistema) = 6`
+  - *Severity:* WARN · *Fields:* form
+- **FR-19** — Este Código já esta cadastrado
+  - *Condition:* `!empty(this.value)`
+  - *Severity:* WARN · *Fields:* .barr_emb3
+- **FR-20** — Este Código já esta cadastrado
+  - *Condition:* `(this.value = barr_emb or this.value = barr_emb2) and !empty(this.value)`
+  - *Severity:* WARN · *Fields:* .barr_emb3
+- **FR-21** — Código já cadastrado para o Produto 
+  - *Condition:* `_tally > 0`
+  - *Severity:* WARN · *Fields:* .barr_emb3
+- **FR-22** — Transicao de estado: barr_emb3 = '' (STATE_TRANSITION)
+  - *Condition:* `barr_emb3 = ''`
+  - *Severity:* WARN · *Fields:* .barr_emb3
+- **FR-23** — Não foi possível criar uma conexão ODBC!
+  - *Condition:* `gncom < 1`
+  - *Severity:* WARN · *Fields:* form
+- **FR-24** — Não foi possível criar uma conexão ODBC!
+  - *Condition:* `lnResp < 0`
+  - *Severity:* WARN · *Fields:* form
+- **FR-25** — Matrícula não cadastrada! Favor contactar supervisor
+  - *Condition:* `Reccount()=0`
+  - *Severity:* WARN · *Fields:* form
+- **FR-26** — Senha inválida
+  - *Condition:* `This.Value#senha`
+  - *Severity:* WARN · *Fields:* form
+- **FR-27** — Você não está autorizado a usar este Sistema
+  - *Condition:* `vsenha < 3`
+  - *Severity:* WARN · *Fields:* form
+- **FR-28** — Você deve Confirmar a senha
+  - *Condition:* `Thisform.senha3.Value#This.Value And !Empty(Thisform.senha3.Value)`
+  - *Severity:* WARN · *Fields:* form
+- **FR-29** — Finalizar conferência?
+  - *Condition:* `Messagebox('Finalizar conferência?',4+32+256,sistema) = 6`
+  - *Severity:* WARN · *Fields:* form
+- **FR-30** — Este Documento já foi conferido!
+  - *Condition:* `!Empty(This.Value)`
+  - *Severity:* WARN · *Fields:* form
+- **FR-31** — Este Documento já foi conferido!
+  - *Condition:* `fechado = .T.`
+  - *Severity:* WARN · *Fields:* form
+- **FR-32** — Documento não cadastrado!
+  - *Condition:* `Reccount()=0`
+  - *Severity:* WARN · *Fields:* form
+- **FR-33** — Este Documento já foi lançado!
+  - *Condition:* `Found()`
+  - *Severity:* WARN · *Fields:* form
+- **FR-34** — Este Documento já foi lançado!
+  - *Condition:* `Messagebox('Este Documento já foi lançado!'+Chr(13)+'Confirma assim mesmo?',4+32+256,sistema) = 7`
+  - *Severity:* WARN · *Fields:* form
+- **FR-35** — Fornecedor diferente!
+  - *Condition:* `Messagebox('Fornecedor diferente!'+Chr(13)+'Confirma este fornecedor?',4+32+256,sistema) = 7`
+  - *Severity:* WARN · *Fields:* form
+- **FR-36** — Transicao de estado: campo = '^XA' (STATE_TRANSITION)
+  - *Condition:* `campo = '^XA'`
+  - *Severity:* WARN · *Fields:* .campo
+- **FR-37** — Transicao de estado: campo = '^FO510,40^A0R,150,36^FD'+estoq.Descri+'^FS' (STATE_TRANSITION)
+  - *Condition:* `campo = '^FO510,40^A0R,150,36^FD'+estoq.Descri+'^FS'`
+  - *Severity:* WARN · *Fields:* .campo
+- **FR-38** — Transicao de estado: campo = '^FO420,360^A0R,100,50^FD'+Alltrim(estoq.embalag)+' c/ '+Trans(estoq.embalqt)+'^FS' (STATE_TRANSITION)
+  - *Condition:* `campo = '^FO420,360^A0R,100,50^FD'+Alltrim(estoq.embalag)+' c/ '+Trans(estoq.embalqt)+'^FS'`
+  - *Severity:* WARN · *Fields:* .campo
+- **FR-39** — Transicao de estado: campo = '^FO210,270^BCR,200,Y,N,N^FD'+vcodbarr+'^FS' (STATE_TRANSITION)
+  - *Condition:* `campo = '^FO210,270^BCR,200,Y,N,N^FD'+vcodbarr+'^FS'`
+  - *Severity:* WARN · *Fields:* .campo
+- **FR-40** — Transicao de estado: campo = '^FO220,270^BCR,200,Y,N,N^FD'+vcodbarr+'^FS' (STATE_TRANSITION)
+  - *Condition:* `campo = '^FO220,270^BCR,200,Y,N,N^FD'+vcodbarr+'^FS'`
+  - *Severity:* WARN · *Fields:* .campo
+- **FR-41** — Transicao de estado: campo = '^FO110,335^A0R,55,35^FD'+vcodbarr+'^FS' (STATE_TRANSITION)
+  - *Condition:* `campo = '^FO110,335^A0R,55,35^FD'+vcodbarr+'^FS'`
+  - *Severity:* WARN · *Fields:* .campo
+- **FR-42** — Transicao de estado: campo = '^XZ' (STATE_TRANSITION)
+  - *Condition:* `campo = '^XZ'`
+  - *Severity:* WARN · *Fields:* .campo
+- **FR-43** — Código Não cadastrado!
+  - *Condition:* `!Empty(This.Value)`
+  - *Severity:* WARN · *Fields:* form
+- **FR-44** — Código Não cadastrado!
+  - *Condition:* `Reccount() = 0`
+  - *Severity:* WARN · *Fields:* form
+- **FR-45** — Código Não cadastrado!
+  - *Condition:* `Messagebox('Código Não cadastrado!'+Chr(13)+'Deseja Cadastrar agora?',4+32+256,sistema) = 6`
+  - *Severity:* WARN · *Fields:* form
+- **FR-46** — Código Não cadastrado para
+  - *Condition:* `Reccount()=0`
+  - *Severity:* WARN · *Fields:* form
+- **FR-47** — Este Código já tem Qtde lançada (
+  - *Condition:* `qtd_rec > 0`
+  - *Severity:* WARN · *Fields:* form
+- **FR-48** — Este Código já tem Qtde lançada (
+  - *Condition:* `Messagebox('Este Código já tem Qtde lançada ('+Trans(qtd_rec)+')!'+Chr(13)+'Deseja lança-lo assim mesmo?',4+32+256,sistema) = 7`
+  - *Severity:* WARN · *Fields:* form
+- **FR-49** — Confirma Exclusão?
+  - *Condition:* `messagebox('Confirma Exclusão?',4+32+256,sistema) = 6`
+  - *Severity:* WARN · *Fields:* form
+- **FR-50** — Código EAN não é desse DUN-14!
+  - *Condition:* `This.Value # produto.codbarr And This.Value # produto.codbarr2 And This.Value # produto.codbarr3 AND VAL(produto.codbarr) # 0`
+  - *Severity:* WARN · *Fields:* form
+- **FR-51** — nome is required
+  - *Condition:* `nome IS NOT NULL`
+  - *Severity:* ERROR · *Fields:* nome
+- **FR-52** — descri is required
+  - *Condition:* `descri IS NOT NULL`
+  - *Severity:* ERROR · *Fields:* descri
+- **FR-53** — alterar is required
+  - *Condition:* `alterar IS NOT NULL`
+  - *Severity:* ERROR · *Fields:* alterar
+- **FR-54** — incluir is required
+  - *Condition:* `incluir IS NOT NULL`
+  - *Severity:* ERROR · *Fields:* incluir
+- **FR-55** — excluir is required
+  - *Condition:* `excluir IS NOT NULL`
+  - *Severity:* ERROR · *Fields:* excluir
+- **FR-56** — consultar is required
+  - *Condition:* `consultar IS NOT NULL`
+  - *Severity:* ERROR · *Fields:* consultar
+- **FR-57** — cgc is required
+  - *Condition:* `cgc IS NOT NULL`
+  - *Severity:* ERROR · *Fields:* cgc
+- **FR-58** — cod_com is required
+  - *Condition:* `cod_com IS NOT NULL`
+  - *Severity:* ERROR · *Fields:* cod_com
+- **FR-59** — categ is required
+  - *Condition:* `categ IS NOT NULL`
+  - *Severity:* ERROR · *Fields:* categ
+- **FR-60** — tiplog is required
+  - *Condition:* `tiplog IS NOT NULL`
+  - *Severity:* ERROR · *Fields:* tiplog
+- **FR-61** — lograd is required
+  - *Condition:* `lograd IS NOT NULL`
+  - *Severity:* ERROR · *Fields:* lograd
+- **FR-62** — bairro is required
+  - *Condition:* `bairro IS NOT NULL`
+  - *Severity:* ERROR · *Fields:* bairro
+- **FR-63** — cep is required
+  
