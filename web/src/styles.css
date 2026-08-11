@@ -29,6 +29,9 @@ button{font-family:inherit}
 .p-err{background:var(--reject-wash);color:var(--reject)}
 .barra{background:var(--surface-raised);border-bottom:1px solid var(--border);
   padding:11px 16px;font-size:12px;color:var(--text-muted);display:flex;gap:16px;align-items:center}
+/* A marca entra por aqui para não repetir markup em cada tela com barra. */
+.barra::before{content:"";flex:none;width:26px;height:26px;margin-right:-6px;
+  background:url("/mundial-marca.svg") center/contain no-repeat}
 .barra b{color:var(--text);font-weight:600}
 .barra .pt{margin-left:auto;font-family:var(--mono);font-size:11px}
 .btn{background:var(--focus);color:#08201F;border:0;border-radius:var(--r);

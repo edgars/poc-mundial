@@ -11,9 +11,8 @@ import { Sessao } from '../api/sessao';
     .tela{min-height:100vh;display:grid;place-items:center;padding:40px}
     .cartao{width:390px;background:var(--surface-raised);border:1px solid var(--border);
       border-radius:var(--r-lg);padding:28px}
-    .marca{font-family:var(--mono);font-size:11px;letter-spacing:.22em;
-      text-transform:uppercase;color:var(--text-muted)}
-    h1{font-size:23px;font-weight:600;letter-spacing:-.02em;margin:8px 0 22px}
+    .marca{display:block;width:196px;height:auto;margin:0 auto 4px}
+    h1{font-size:23px;font-weight:600;letter-spacing:-.02em;margin:8px 0 22px;text-align:center}
     .campo{margin-bottom:16px}
     input{width:100%;margin-top:6px;background:var(--surface-base);border:1px solid var(--border);
       border-radius:var(--r);padding:12px 14px;font-family:var(--mono);font-size:20px;
@@ -28,7 +27,7 @@ import { Sessao } from '../api/sessao';
   template: `
     <div class="tela">
       <form class="cartao" (ngSubmit)="entrar()">
-        <div class="marca">Supermercados Mundial</div>
+        <img class="marca" src="mundial.svg" alt="Supermercados Mundial" width="196" height="134">
         <h1>Conferência de Recebimento</h1>
 
         <div class="campo">
