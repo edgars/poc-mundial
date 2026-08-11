@@ -28,6 +28,16 @@ variable "tipo_instancia" {
   default     = "S5.LARGE8"
 }
 
+variable "image_id" {
+  description = <<-EOT
+    ID da imagem pública a usar. Vazio escolhe a Ubuntu Server 24.04 LTS x86_64
+    simples da região, descartando as variantes HCC, UEFI, GRID e TK4.
+    Em sa-saopaulo a simples é img-mmytdhbn.
+  EOT
+  type        = string
+  default     = ""
+}
+
 variable "tamanho_disco" {
   description = "Tamanho do disco de sistema em GB. Guarda as imagens Docker e o volume do banco."
   type        = number

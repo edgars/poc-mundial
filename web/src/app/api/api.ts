@@ -34,6 +34,8 @@ export interface ResumoDoca {
 export interface Leitura {
   estado: 'aceito' | 'recusado' | 'ambiguo' | 'confirmar';
   chave?: string; mensagem?: string; candidatos?: string[];
+  /** RK-dab7d2033e2e: só vem preenchido para quem tem permissão de inclusão em estoq. */
+  ofertaCadastro?: string;
   item?: { codigo: string; descricao: string; embalagem?: string; embalagemQtd?: number;
            dun14?: string; qtdNf: number; qtdRec: number; pendencia: boolean };
 }
@@ -68,8 +70,11 @@ export class Api {
   }
 
   ler(doc: string, codigo: string) {
+    // AD-8: a permissão é por tabela; cadastrar código novo exige incluir em `estoq`.
+    const podeIncluir = this.sessao()?.permissoes.some(p => p.tabela === 'estoq' && p.incluir) ?? false;
     return firstValueFrom(this.http.post<Leitura>(
-      `${base()}/api/conferencia/leituras?documento=${encodeURIComponent(doc)}`, { codigo }));
+      `${base()}/api/conferencia/leituras?documento=${encodeURIComponent(doc)}`,
+      { codigo, podeIncluir }));
   }
 
   lancar(doc: string, codigo: string, quantidade: number, matricula: string,

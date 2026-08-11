@@ -49,6 +49,8 @@ type Confirmacao = { chave?: string; mensagem: string; acao: () => void } | null
     .qtd input{width:100%;margin-top:8px;background:var(--surface-base);border:1px solid var(--border);
       border-radius:var(--r);padding:10px 12px;color:var(--text);font-family:var(--mono);font-size:24px}
     .qtd input:focus{outline:0;border-color:var(--focus);box-shadow:0 0 0 3px var(--focus-glow)}
+    .oferta{margin-top:16px;padding:14px;border:1px solid var(--focus);border-radius:var(--r);
+      background:rgba(61,214,208,.07);font-size:14px;line-height:1.5;white-space:pre-line}
     .hist{margin-top:auto;padding-top:18px;font-size:12px;color:var(--text-muted);
       line-height:1.9;font-family:var(--mono)}
     .acoes{display:flex;gap:8px;padding:0 var(--s4) var(--s4)}
@@ -161,6 +163,13 @@ type Confirmacao = { chave?: string; mensagem: string; acao: () => void } | null
             {{ leitura()?.mensagem }}
           }
         </div>
+
+        @if (leitura()?.ofertaCadastro; as oferta) {
+          <div class="oferta">
+            <div>{{ oferta }}</div>
+            <button class="btn" style="margin-top:10px;padding:8px 14px;font-size:13px">Cadastrar agora</button>
+          </div>
+        }
 
         @if (leitura()?.candidatos?.length) {
           <div class="emb" style="margin-top:10px;line-height:1.9">

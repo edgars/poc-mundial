@@ -17,6 +17,20 @@ data "tencentcloud_images" "ubuntu" {
 locals {
   zona = var.zona != "" ? var.zona : data.tencentcloud_availability_zones_by_product.cvm.zones[0].name
 
+  # A busca por "Ubuntu Server 24.04" casa também com as variantes HCC, UEFI e
+  # GRID, feitas para outros perfis de máquina. Pegar images[0] às cegas pode
+  # trazer uma delas — daí o filtro explícito, com images[0] só como último caso.
+  imagens_simples = [
+    for i in data.tencentcloud_images.ubuntu.images : i
+    if !can(regex("HCC|UEFI|GRID|TK4", i.os_name))
+  ]
+
+  image_id = coalesce(
+    var.image_id != "" ? var.image_id : null,
+    try(local.imagens_simples[0].image_id, null),
+    data.tencentcloud_images.ubuntu.images[0].image_id,
+  )
+
   prefixo_registry = var.registry != "" ? "${trimsuffix(var.registry, "/")}/" : ""
 
   imagem_api       = "${local.prefixo_registry}mundial-api:${var.tag_imagens}"
@@ -144,7 +158,7 @@ resource "tencentcloud_instance" "poc" {
   instance_name = var.nome
 
   availability_zone = local.zona
-  image_id          = data.tencentcloud_images.ubuntu.images[0].image_id
+  image_id          = local.image_id
   instance_type     = var.tipo_instancia
 
   instance_charge_type = "POSTPAID_BY_HOUR"

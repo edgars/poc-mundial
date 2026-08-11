@@ -40,7 +40,8 @@ builder.Services.ConfigureHttpJsonOptions(o =>
 
 // AD-15 / spine: CORS libera apenas a origem do frontend.
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
-    p.WithOrigins(origemWeb).AllowAnyHeader().AllowAnyMethod()));
+    p.WithOrigins(origemWeb.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+     .AllowAnyHeader().AllowAnyMethod()));
 
 var app = builder.Build();
 app.UseCors();

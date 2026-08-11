@@ -323,3 +323,32 @@ Para não gastar seu tempo procurando:
 | Banco não sobe | Em Apple Silicon o SQL Server 2022 não roda. O `.env` já vem com `DB_IMAGE` apontando para o Azure SQL Edge. |
 | Erro de CORS no navegador | `ORIGEM_WEB` no `.env` precisa bater com a URL que você abriu. |
 | Login não responde | A API pode estar esperando o banco. `docker compose logs api` |
+
+---
+
+## Capturar as telas de novo
+
+Os slides com as 18 telas estão em `_bmad-output/implementation-artifacts/slides-testes.html`.
+Para regerá-los depois de mudar a interface:
+
+```bash
+# 1. estado limpo
+docker run --rm --network poc-mundial_default mcr.microsoft.com/mssql-tools \
+  /opt/mssql-tools/bin/sqlcmd -S db -U sa -P 'Mundial#2026Dev' -d sgm \
+  -Q "DELETE FROM conferencia; DELETE FROM acesso; DELETE FROM estoq;
+      DELETE FROM forne; DELETE FROM usuario;"
+docker compose restart api && sleep 15
+
+# 2. capturar (o navegador roda dentro da rede do compose)
+docker run --rm --network poc-mundial_default \
+  -v "$PWD/tools/capturar.mjs:/app/capturar.mjs" \
+  -v "$PWD/tools/capturas:/saida" \
+  -w /app mcr.microsoft.com/playwright:latest \
+  sh -c "npm i playwright@1.46.1 >/dev/null 2>&1 && node capturar.mjs"
+
+# 3. montar os slides
+python3 tools/montar-slides.py
+```
+
+O script `tools/capturar.mjs` percorre os mesmos passos deste roteiro. Se um passo mudar aqui,
+mude lá também — as legendas dos slides saem de dentro dele.

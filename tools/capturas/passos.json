@@ -1,0 +1,92 @@
+[
+  {
+    "arquivo": "01-tela-de-entrada.png",
+    "titulo": "Tela de entrada",
+    "legenda": "A primeira tela. Foco já no campo de matrícula — quem opera na doca digita e tecla Enter, sem tocar no mouse."
+  },
+  {
+    "arquivo": "02-matricula-nao-cadastrada.png",
+    "titulo": "Matricula nao cadastrada",
+    "legenda": "Matrícula que não existe. A mensagem é o texto literal do legado, e a chave da regra é RK-046f5592ef5b."
+  },
+  {
+    "arquivo": "03-senha-invalida.png",
+    "titulo": "Senha invalida",
+    "legenda": "Senha errada. \"Senha inválida\" — RK-f8293cf9dbb3. Não revela se a matrícula existe."
+  },
+  {
+    "arquivo": "04-nivel-insuficiente.png",
+    "titulo": "Nivel insuficiente",
+    "legenda": "Paulo tem nível 1. Barrado antes de qualquer tela — RK-8ffd715ce9ad, a condição legada vsenha < 3."
+  },
+  {
+    "arquivo": "05-painel-de-docas.png",
+    "titulo": "Painel de docas",
+    "legenda": "Quatro docas. A 2 vem primeiro com anel âmbar porque está aberta há mais de três horas — a ordem é por tempo aberto, não por número. Sem medidor de ocupação."
+  },
+  {
+    "arquivo": "06-conferencia-aberta.png",
+    "titulo": "Conferencia aberta",
+    "legenda": "Doca 1, Bebidas Primavera. Três itens já lançados, um pendente, e a cerveja com divergência de -6. O painel focal à direita é o ponto único de leitura."
+  },
+  {
+    "arquivo": "07-leitura-aceita.png",
+    "titulo": "Leitura aceita",
+    "legenda": "Suco de uva aceito. Selo verde, descrição, embalagem e o campo de quantidade já com o valor da nota selecionado."
+  },
+  {
+    "arquivo": "08-item-lancado.png",
+    "titulo": "Item lancado",
+    "legenda": "Lançado. A linha entra com pílula ok, a pendência some, e o foco volta sozinho ao campo de leitura."
+  },
+  {
+    "arquivo": "09-confirmacao-de-requantidade.png",
+    "titulo": "Confirmacao de requantidade",
+    "legenda": "Ao tentar gravar 38 sobre os 40 que já existiam, RK-8233e231d6fb pede confirmação. O aviso existe porque o lançamento substitui — e substituir é destrutivo. Somar não precisaria perguntar."
+  },
+  {
+    "arquivo": "10-substituiu-nao-somou.png",
+    "titulo": "Substituiu nao somou",
+    "legenda": "Confirmado. O valor virou 38 — substituiu os 40, não somou para 78. A linha passa a marcar divergência -2, em âmbar."
+  },
+  {
+    "arquivo": "11-codigo-nao-cadastrado.png",
+    "titulo": "Codigo nao cadastrado",
+    "legenda": "Código que não existe. Som diferente, selo vermelho. Cleber não tem permissão de inclusão, então não aparece oferta de cadastrar."
+  },
+  {
+    "arquivo": "12-codigo-de-outro-fornecedor.png",
+    "titulo": "Codigo de outro fornecedor",
+    "legenda": "Sabão em pó existe no cadastro, mas não está nesta nota. RK-732bb9300bad nomeia o fornecedor do documento."
+  },
+  {
+    "arquivo": "13-leitura-ambigua.png",
+    "titulo": "Leitura ambigua",
+    "legenda": "O mesmo código responde a dois produtos. O sistema recusa e mostra os candidatos — nunca escolhe por você."
+  },
+  {
+    "arquivo": "14-finalizar-conferencia.png",
+    "titulo": "Finalizar conferencia",
+    "legenda": "F2 finaliza. RK-fa93a48fbecc pergunta uma vez, e avisa quantos itens ficam pendentes."
+  },
+  {
+    "arquivo": "15-documento-fechado.png",
+    "titulo": "Documento fechado",
+    "legenda": "Fechado. A tela inteira muda de modo: faixa âmbar, campo de leitura some, nada de botão cinza espalhado."
+  },
+  {
+    "arquivo": "16-doca-aguardando.png",
+    "titulo": "Doca aguardando",
+    "legenda": "Doca 3 vista pela Rosana. Nada lançado ainda — todos os itens em aguarda."
+  },
+  {
+    "arquivo": "17-oferta-de-cadastrar.png",
+    "titulo": "Oferta de cadastrar",
+    "legenda": "Mesmo código inexistente, agora com a Rosana. Ela tem permissão de inclusão, então a recusa vem acompanhada da oferta de cadastrar na hora — RK-dab7d2033e2e."
+  },
+  {
+    "arquivo": "18-somente-leitura.png",
+    "titulo": "Somente leitura",
+    "legenda": "Documento da doca 4, fechado desde o seed. Somente leitura, com quem fechou registrado no topo."
+  }
+]
