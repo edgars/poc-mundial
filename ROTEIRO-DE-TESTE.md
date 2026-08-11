@@ -415,3 +415,40 @@ python3 tools/montar-slides.py
 
 O script `tools/capturar.mjs` percorre os mesmos passos deste roteiro. Se um passo mudar aqui,
 mude lá também — as legendas dos slides saem de dentro dele.
+
+---
+
+## Gravar o vídeo do percurso
+
+`_bmad-output/implementation-artifacts/mundial-conferencia.mp4` — 2min27s, narrado, gravado da
+aplicação real. Há também um `conferencia.gif` com o trecho da leitura de código, para quem não
+puder abrir vídeo.
+
+Para regravar depois de mudar a interface:
+
+```bash
+# 1. estado limpo, para o percurso bater com este roteiro
+docker run --rm --network poc-mundial_default mcr.microsoft.com/mssql-tools \
+  /opt/mssql-tools/bin/sqlcmd -S db -U sa -P 'Mundial#2026Dev' -d sgm \
+  -Q "DELETE FROM log_even; DELETE FROM conferencia; DELETE FROM acesso;
+      DELETE FROM estoq; DELETE FROM forne; DELETE FROM usuario;"
+docker compose restart api && sleep 15
+
+# 2. gravar (WebM)
+docker run --rm --network poc-mundial_default \
+  -v "$PWD/tools/gravar.mjs:/app/gravar.mjs" -v "$PWD/tools/video:/saida" \
+  -w /app mcr.microsoft.com/playwright:latest \
+  sh -c "npm i playwright@1.46.1 >/dev/null 2>&1 && node gravar.mjs"
+
+# 3. converter para MP4 e gerar o GIF
+docker run --rm -v "$PWD/tools/video:/v" -w /v mcr.microsoft.com/playwright:latest sh -c '
+  ffmpeg -y -loglevel error -i "$(ls *.webm | head -1)" \
+    -c:v libx264 -preset slow -crf 26 -pix_fmt yuv420p -movflags +faststart \
+    mundial-conferencia.mp4
+  ffmpeg -y -loglevel error -ss 33 -t 26 -i mundial-conferencia.mp4 \
+    -vf "fps=10,scale=900:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=128[p];[b][p]paletteuse" \
+    conferencia.gif'
+```
+
+A narração é injetada na própria página durante a gravação (`tools/gravar.mjs`), então ela faz
+parte do vídeo — não é legenda montada depois. Se um passo mudar neste roteiro, mude lá também.

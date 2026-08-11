@@ -14,3 +14,7 @@ crash.*.log
 
 # Sistema
 .DS_Store
+
+# intermediários da gravação — o MP4 e o GIF finais ficam em _bmad-output/
+tools/video/
+tools/capturas/*.png
