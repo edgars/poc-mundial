@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Mundial.Infraestrutura")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+10f5b769ce6fa6bdd376c3d571ebaaa9bb038e3b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d00a1247e41b6fa22928e5289f8e5a874eafb5a6")]
 [assembly: System.Reflection.AssemblyProductAttribute("Mundial.Infraestrutura")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Mundial.Infraestrutura")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -29,6 +29,7 @@ builder.Services.AddScoped<IAcessoRepositorio, AcessoRepositorio>();
 builder.Services.AddScoped<IProdutoConsulta, ProdutoConsulta>();
 builder.Services.AddScoped<IProdutoRepositorio, ProdutoRepositorio>();
 builder.Services.AddScoped<CadastrarCodigos>();
+builder.Services.AddScoped<ManterProduto>();
 builder.Services.AddScoped<IFornecedorConsulta, FornecedorConsulta>();
 builder.Services.AddScoped<IAuditoriaConsulta, AuditoriaConsulta>();
 builder.Services.AddScoped<ConsultarFornecedores>();
@@ -141,6 +142,7 @@ if (docsAbertos)
             expires_in = (int)validadeSessao.TotalSeconds
         });
     }).AllowAnonymous().DisableAntiforgery()
+      .Accepts<PedidoToken>("application/x-www-form-urlencoded")
       .WithTags("Autenticação")
       .WithSummary("Password grant OAuth2 — é isto que o Authorize do Swagger chama.");
 }
@@ -234,6 +236,26 @@ app.MapGet("/api/produtos/{codigo}", async (string codigo, IProdutoConsulta prod
         });
 }).RequireAuthorization("estoq:consultar")
   .WithTags("Produtos").WithSummary("Consulta produto por código, com EAN e DUN-14 cadastrados.");
+
+// FR-28: criar produto. É o único endpoint que exige `incluir` — antes disso a quarta permissão
+// do legado viajava no token e nenhum caminho a consultava.
+app.MapPost("/api/produtos", async (ProdutoPedido pedido, ClaimsPrincipal quem, ManterProduto manter) =>
+{
+    var r = await manter.Criar(
+        new PedidoProduto(pedido.Codigo, pedido.Descricao, pedido.Embalagem,
+                          pedido.EmbalagemQtd, pedido.Ean, pedido.Dun), quem.Matricula());
+    return r.Passou ? Results.Ok(new { criado = true, codigo = pedido.Codigo.Trim() }) : Problema(r);
+}).RequireAuthorization("estoq:incluir");
+
+// FR-28: alterar descrição, embalagem e quantidade — não só os códigos de barras.
+app.MapPut("/api/produtos/{codigo}", async (string codigo, ProdutoPedido pedido,
+    ClaimsPrincipal quem, ManterProduto manter) =>
+{
+    var r = await manter.Alterar(
+        new PedidoProduto(codigo, pedido.Descricao, pedido.Embalagem,
+                          pedido.EmbalagemQtd, pedido.Ean, pedido.Dun), quem.Matricula());
+    return r.Passou ? Results.Ok(new { gravado = true }) : Problema(r);
+}).RequireAuthorization("estoq:alterar");
 
 app.MapPut("/api/produtos/{codigo}/codigos", async (string codigo, CadastroPedido pedido,
     ClaimsPrincipal quem, CadastrarCodigos cadastrar) =>
@@ -394,3 +416,7 @@ record LancamentoPedido(string Codigo, decimal Quantidade, bool Confirmado, stri
 record FechamentoPedido(bool Confirmado);
 record CadastroPedido(string[] Dun, bool Confirmado);
 record SenhaPedido(string Senha, string Confirmacao);
+record ProdutoPedido(string Codigo, string Descricao, string? Embalagem, decimal? EmbalagemQtd,
+    string? Ean, string[] Dun);
+/// Só documenta o corpo do password grant; o endpoint lê o formulário direto da requisição.
+record PedidoToken(string grant_type, string username, string password);

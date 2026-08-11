@@ -1,0 +1,17 @@
+/src/Mundial.Demo/bin/Release/net10.0/Mundial.Demo.deps.json
+/src/Mundial.Demo/bin/Release/net10.0/Mundial.Demo.dll
+/src/Mundial.Demo/bin/Release/net10.0/Mundial.Demo.pdb
+/src/Mundial.Demo/bin/Release/net10.0/Mundial.Aplicacao.dll
+/src/Mundial.Demo/bin/Release/net10.0/Mundial.Dominio.dll
+/src/Mundial.Demo/bin/Release/net10.0/Mundial.Aplicacao.pdb
+/src/Mundial.Demo/bin/Release/net10.0/Mundial.Dominio.pdb
+/src/Mundial.Demo/obj/Release/net10.0/Mundial.Demo.csproj.AssemblyReference.cache
+/src/Mundial.Demo/obj/Release/net10.0/Mundial.Demo.GeneratedMSBuildEditorConfig.editorconfig
+/src/Mundial.Demo/obj/Release/net10.0/Mundial.Demo.AssemblyInfoInputs.cache
+/src/Mundial.Demo/obj/Release/net10.0/Mundial.Demo.AssemblyInfo.cs
+/src/Mundial.Demo/obj/Release/net10.0/Mundial.Demo.csproj.CoreCompileInputs.cache
+/src/Mundial.Demo/obj/Release/net10.0/Mundial..B61F441C.Up2Date
+/src/Mundial.Demo/obj/Release/net10.0/Mundial.Demo.dll
+/src/Mundial.Demo/obj/Release/net10.0/refint/Mundial.Demo.dll
+/src/Mundial.Demo/obj/Release/net10.0/Mundial.Demo.pdb
+/src/Mundial.Demo/obj/Release/net10.0/ref/Mundial.Demo.dll

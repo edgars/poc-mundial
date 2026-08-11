@@ -211,6 +211,14 @@ declarados em `Aplicacao` — nunca o contrário.
 - **Rule:** todo o andaime vive em `Mundial.Demo`, um projeto separado que **referencia** `Aplicacao` e nunca é referenciado por ninguém. Registra-se apenas quando `MODO_DEMO=true`. O seed **não** entra em migration DbUp — migration é schema, seed é dado de demonstração. Nenhum tipo de `Dominio` ou `Aplicacao` conhece `Mundial.Demo`; apagar o projeto e a flag deixa a solução compilando.
 - **Corolário:** o painel de docas consome os mesmos endpoints de leitura que o produto usa. Se precisar de endpoint próprio, ele nasce em `Api`, não em `Demo` — a tela é andaime, o dado que ela lê não é.
 
+### AD-22 — Autenticação migra para OpenID Connect (Keycloak)
+
+- **Binds:** `Mundial.Api`, o cliente Angular, o seed de usuários
+- **Prevents:** espalhar emissão e validação de token pela aplicação, o que tornaria a troca por um provedor externo uma refatoração em vez de uma configuração
+- **Rule:** a emissão e a validação de token vivem **exclusivamente** em `Mundial.Api/Seguranca.cs`. `Dominio` e `Aplicacao` nunca conhecem JWT, claim ou cabeçalho — a identidade chega aos casos de uso como uma `string matricula`. Nenhum outro projeto referencia `Microsoft.IdentityModel` ou `System.IdentityModel`.
+- **Direção declarada pelo autor:** a autenticação e a autorização passarão a um provedor OpenID Connect (Keycloak). Quando isso acontecer, muda apenas a camada `Api`: a validação troca a chave simétrica por JWKS do provedor, e o endpoint de login sai da aplicação.
+- **Decisão que fica aberta até lá:** onde moram as permissões. Hoje vêm da tabela `acesso` do legado, por tabela e operação, e viram claims `perm:<tabela>:<operacao>` no token. Com Keycloak há duas saídas — mapear `acesso` para roles do provedor, ou manter `acesso` como autoridade e usar o Keycloak apenas para autenticar. A segunda preserva a fidelidade ao legado (AD-8) e é a que o desenho atual favorece.
+
 ## Consistency Conventions
 
 | Concern | Convention |

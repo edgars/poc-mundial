@@ -1,0 +1,11 @@
+/src/Mundial.Dominio/bin/Release/net10.0/Mundial.Dominio.deps.json
+/src/Mundial.Dominio/bin/Release/net10.0/Mundial.Dominio.dll
+/src/Mundial.Dominio/bin/Release/net10.0/Mundial.Dominio.pdb
+/src/Mundial.Dominio/obj/Release/net10.0/Mundial.Dominio.GeneratedMSBuildEditorConfig.editorconfig
+/src/Mundial.Dominio/obj/Release/net10.0/Mundial.Dominio.AssemblyInfoInputs.cache
+/src/Mundial.Dominio/obj/Release/net10.0/Mundial.Dominio.AssemblyInfo.cs
+/src/Mundial.Dominio/obj/Release/net10.0/Mundial.Dominio.csproj.CoreCompileInputs.cache
+/src/Mundial.Dominio/obj/Release/net10.0/Mundial.Dominio.dll
+/src/Mundial.Dominio/obj/Release/net10.0/refint/Mundial.Dominio.dll
+/src/Mundial.Dominio/obj/Release/net10.0/Mundial.Dominio.pdb
+/src/Mundial.Dominio/obj/Release/net10.0/ref/Mundial.Dominio.dll

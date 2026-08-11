@@ -1,0 +1,17 @@
+/src/Mundial.Infraestrutura/bin/Release/net10.0/Mundial.Infraestrutura.deps.json
+/src/Mundial.Infraestrutura/bin/Release/net10.0/Mundial.Infraestrutura.dll
+/src/Mundial.Infraestrutura/bin/Release/net10.0/Mundial.Infraestrutura.pdb
+/src/Mundial.Infraestrutura/bin/Release/net10.0/Mundial.Aplicacao.dll
+/src/Mundial.Infraestrutura/bin/Release/net10.0/Mundial.Dominio.dll
+/src/Mundial.Infraestrutura/bin/Release/net10.0/Mundial.Aplicacao.pdb
+/src/Mundial.Infraestrutura/bin/Release/net10.0/Mundial.Dominio.pdb
+/src/Mundial.Infraestrutura/obj/Release/net10.0/Mundial.Infraestrutura.csproj.AssemblyReference.cache
+/src/Mundial.Infraestrutura/obj/Release/net10.0/Mundial.Infraestrutura.GeneratedMSBuildEditorConfig.editorconfig
+/src/Mundial.Infraestrutura/obj/Release/net10.0/Mundial.Infraestrutura.AssemblyInfoInputs.cache
+/src/Mundial.Infraestrutura/obj/Release/net10.0/Mundial.Infraestrutura.AssemblyInfo.cs
+/src/Mundial.Infraestrutura/obj/Release/net10.0/Mundial.Infraestrutura.csproj.CoreCompileInputs.cache
+/src/Mundial.Infraestrutura/obj/Release/net10.0/Mundial..06D96866.Up2Date
+/src/Mundial.Infraestrutura/obj/Release/net10.0/Mundial.Infraestrutura.dll
+/src/Mundial.Infraestrutura/obj/Release/net10.0/refint/Mundial.Infraestrutura.dll
+/src/Mundial.Infraestrutura/obj/Release/net10.0/Mundial.Infraestrutura.pdb
+/src/Mundial.Infraestrutura/obj/Release/net10.0/ref/Mundial.Infraestrutura.dll

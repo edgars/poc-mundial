@@ -155,6 +155,25 @@ public class Invariantes
             Assert.DoesNotContain("Matricula", p.Value);
     }
 
+    [Fact(DisplayName = "AD-22 · JWT vive só na camada Api, para a troca por OIDC ser configuração")]
+    public void AD22_token_nao_vaza_para_dentro()
+    {
+        foreach (var projeto in new[] { "Mundial.Dominio", "Mundial.Aplicacao", "Mundial.Infraestrutura" })
+        {
+            foreach (var conteudo in Csproj(projeto))
+                Assert.DoesNotContain("IdentityModel", conteudo);
+
+            foreach (var arquivo in Directory.GetFiles(Path.Combine(Raiz, "src", projeto), "*.cs",
+                                                       SearchOption.AllDirectories))
+            {
+                if (arquivo.Contains("/obj/") || arquivo.Contains("/bin/")) continue;
+                var texto = File.ReadAllText(arquivo);
+                foreach (var proibido in new[] { "JwtSecurityToken", "ClaimsPrincipal", "Bearer " })
+                    Assert.DoesNotContain(proibido, texto);
+            }
+        }
+    }
+
     [Fact(DisplayName = "AD-12 · a aplicação fala português — nenhuma mensagem em inglês no domínio")]
     public void AD12_mensagens_em_portugues()
     {

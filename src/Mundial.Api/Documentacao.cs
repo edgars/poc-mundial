@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 
 namespace Mundial.Api;
 
@@ -73,22 +73,24 @@ public static class Documentacao
                 if (!exigeAuth) return Task.CompletedTask;
 
                 // Duas exigências separadas = alternativas: vale o fluxo de senha OU o bearer colado.
+                // A referência só vira $ref se souber o documento que a hospeda.
                 operacao.Security =
                 [
                     new OpenApiSecurityRequirement
                     {
-                        [new OpenApiSecuritySchemeReference(EsquemaSenha)] = new List<string>()
+                        [new OpenApiSecuritySchemeReference(EsquemaSenha, contexto.Document)] = new List<string>()
                     },
                     new OpenApiSecurityRequirement
                     {
-                        [new OpenApiSecuritySchemeReference(EsquemaToken)] = new List<string>()
+                        [new OpenApiSecuritySchemeReference(EsquemaToken, contexto.Document)] = new List<string>()
                     }
                 ];
 
                 var politica = contexto.Description.ActionDescriptor.EndpointMetadata
                     .OfType<IAuthorizeData>().Select(a => a.Policy).FirstOrDefault(p => p is not null);
                 if (politica is not null)
-                    operacao.Description = $"Exige a permissão `{politica}`. " + operacao.Description;
+                    operacao.Description = $"Exige a permissão `{politica}`.{
+                        (string.IsNullOrWhiteSpace(operacao.Description) ? "" : " " + operacao.Description)}";
 
                 return Task.CompletedTask;
             });

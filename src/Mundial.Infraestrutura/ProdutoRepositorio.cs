@@ -31,13 +31,35 @@ public sealed class ProdutoRepositorio(FabricaConexao fabrica) : IProdutoReposit
         };
     }
 
+    /// <summary>FR-28: grava o produto inteiro, não só os códigos de barras.</summary>
     public async Task Salvar(Produto p, CancellationToken ct = default)
     {
         using var c = fabrica.Abrir();
         await c.ExecuteAsync(@"
             UPDATE dbo.estoq
-               SET barr_emb = @d1, barr_emb2 = @d2, barr_emb3 = @d3
+               SET descri = @descri, embalag = @embalag, embalqt = @embalqt,
+                   codbarr = @ean, barr_emb = @d1, barr_emb2 = @d2, barr_emb3 = @d3
              WHERE RTRIM(codigo) = @codigo",
-            new { codigo = p.Codigo.Trim(), d1 = p.Dun[0], d2 = p.Dun[1], d3 = p.Dun[2] });
+            new
+            {
+                codigo = p.Codigo.Trim(), descri = p.Descricao, embalag = p.Embalagem,
+                embalqt = p.EmbalagemQtd, ean = p.Ean[0],
+                d1 = p.Dun[0], d2 = p.Dun[1], d3 = p.Dun[2]
+            });
+    }
+
+    public async Task Inserir(Produto p, CancellationToken ct = default)
+    {
+        using var c = fabrica.Abrir();
+        await c.ExecuteAsync(@"
+            INSERT INTO dbo.estoq (codigo, descri, embalag, embalqt, codbarr,
+                                   barr_emb, barr_emb2, barr_emb3)
+            VALUES (@codigo, @descri, @embalag, @embalqt, @ean, @d1, @d2, @d3)",
+            new
+            {
+                codigo = p.Codigo.Trim(), descri = p.Descricao, embalag = p.Embalagem,
+                embalqt = p.EmbalagemQtd, ean = p.Ean[0],
+                d1 = p.Dun[0], d2 = p.Dun[1], d3 = p.Dun[2]
+            });
     }
 }

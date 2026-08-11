@@ -168,7 +168,8 @@ type Confirmacao = { chave?: string; mensagem: string; acao: () => void } | null
         @if (leitura()?.ofertaCadastro; as oferta) {
           <div class="oferta">
             <div>{{ oferta }}</div>
-            <button class="btn" style="margin-top:10px;padding:8px 14px;font-size:13px">Cadastrar agora</button>
+            <button class="btn" style="margin-top:10px;padding:8px 14px;font-size:13px"
+                    (click)="cadastrarAgora()">Cadastrar agora</button>
           </div>
         }
 
@@ -239,6 +240,7 @@ export class Conferencia {
   celebrando = signal(false);
   codigo = '';
   qtd: number | null = null;
+  private ultimoCodigoRecusado = signal('');
 
   constructor() {
     if (!this.api.sessao() && !this.api.restaurar()) { this.router.navigate(['/entrar']); }
@@ -273,6 +275,7 @@ export class Conferencia {
     this.codigo = '';
     const r = await this.api.ler(this.documento, valor);
     this.leitura.set(r);
+    if (r.estado === 'recusado') this.ultimoCodigoRecusado.set(valor);
     this.piscar();
     // NFR-15: som junto com o visual, nunca antes
     if (r.estado === 'aceito' || r.estado === 'confirmar') this.som.aceite(); else this.som.recusa();
@@ -344,6 +347,17 @@ export class Conferencia {
   }
 
   usarCodigo(c: string) { this.codigo = c; this.bipar(); }
+
+  /**
+   * RK-dab7d2033e2e / Story 3.1: leva ao cadastro com o código já preenchido, e o parâmetro
+   * `voltar` traz a pessoa de volta a esta conferência quando ela concluir.
+   */
+  cadastrarAgora() {
+    const codigo = this.ultimoCodigoRecusado();
+    this.router.navigate(['/codigos'], {
+      queryParams: { codigo, voltar: this.router.url },
+    });
+  }
 
   rotuloSelo() {
     const l = this.leitura();

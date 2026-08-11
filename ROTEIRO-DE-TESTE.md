@@ -14,7 +14,12 @@ docker compose up --build
 | --- | --- |
 | Aplicação | http://localhost:3000 |
 | API | http://localhost:5001 |
+| Swagger UI | http://localhost:5001/api/docs |
+| Spec OpenAPI | http://localhost:5001/api/openapi/v1.json |
 | Banco | localhost:1433 · usuário `sa` · senha do `.env` |
+
+Na máquina publicada o endereço é o mesmo com o domínio na frente (`https://.../api/docs`) — o
+proxy encaminha tudo que começa com `/api`. Para desligar a documentação: `DOCS_ABERTOS=false`.
 
 O seed roda sozinho na subida quando o banco está vazio. Para semear de novo, apague os dados e
 reinicie a API:
@@ -29,6 +34,25 @@ docker compose restart api
 
 > O container do banco não traz o `sqlcmd` — a imagem do Azure SQL Edge não o inclui. Por isso os
 > comandos de banco usam um container efêmero com as ferramentas, na mesma rede do compose.
+
+---
+
+## Testar pela API, sem a tela
+
+No Swagger UI clique em **Authorize**, escolha `senha`, ponha a matrícula em *username* e a senha em
+*password* e confirme — daí em diante todo **Try it out** já vai com o bearer. O `client_id` fica
+preenchido e não há segredo: o que autentica é a matrícula. Quem já tem um token (o mesmo que
+`POST /api/entrar` devolve) pode colá-lo no esquema `token`.
+
+O cadeado só aparece nas rotas que exigem permissão, e a descrição de cada uma diz qual — por
+exemplo `conferenci:consultar`. Com um operador sem a permissão, o Try it out devolve 403.
+
+```bash
+# o mesmo, no terminal
+TOKEN=$(curl -s -X POST http://localhost:5001/api/oauth/token \
+  -d 'grant_type=password&username=04127&password=mundial' | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
+curl -s -H "Authorization: Bearer $TOKEN" http://localhost:5001/api/docas
+```
 
 ---
 

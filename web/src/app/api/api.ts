@@ -136,6 +136,17 @@ export class Api {
     return firstValueFrom(this.http.get<Produto>(`${base()}/api/produtos/${codigo}`, this.auth));
   }
 
+  criarProduto(p: {codigo: string; descricao: string; embalagem?: string;
+                   embalagemQtd?: number; ean?: string; dun: (string | null)[]}) {
+    return firstValueFrom(this.http.post<{criado: boolean}>(`${base()}/api/produtos`, p, this.auth));
+  }
+
+  salvarProduto(p: {codigo: string; descricao: string; embalagem?: string;
+                    embalagemQtd?: number; ean?: string; dun: (string | null)[]}) {
+    return firstValueFrom(this.http.put<{gravado: boolean}>(
+      `${base()}/api/produtos/${p.codigo}`, p, this.auth));
+  }
+
   gravarCodigos(codigo: string, dun: (string | null)[], confirmado: boolean) {
     return firstValueFrom(this.http.put<{gravado: boolean}>(
       `${base()}/api/produtos/${codigo}/codigos`, { dun, confirmado }, this.auth));

@@ -61,19 +61,53 @@ import { Api, Produto, Etiqueta } from '../api/api';
 
     @if (erroGeral()) { <div class="busca"><div class="msg-err">{{ erroGeral() }}</div></div> }
 
+    @if (criando()) {
+      <div class="cod">
+        <div class="bloco">
+          <h3>Produto novo · {{ form.codigo }}</h3>
+          <div class="campo"><label class="rot">Descrição</label>
+            <input #primeiroNovo [(ngModel)]="form.descricao" maxlength="60"
+                   placeholder="Ex.: REFRIGERANTE COLA 2L"></div>
+          <div class="grade2">
+            <div class="campo"><label class="rot">Embalagem</label>
+              <input [(ngModel)]="form.embalagem" maxlength="10" placeholder="CX"></div>
+            <div class="campo"><label class="rot">Quantidade por embalagem</label>
+              <input type="number" [(ngModel)]="form.embalagemQtd" placeholder="6"></div>
+          </div>
+          <div class="campo"><label class="rot">EAN-13 da unidade</label>
+            <input [(ngModel)]="form.ean" maxlength="13"></div>
+          <div class="campo"><label class="rot">Barr Emb 1 · DUN-14</label>
+            <input [(ngModel)]="dun[0]" maxlength="14" [class.err]="erroSlot() === 0">
+            @if (erroSlot() === 0) { <div class="msg-err">{{ erroMensagem() }}</div> }
+          </div>
+          <div class="acoes">
+            <button class="btn" (click)="criar()">Cadastrar produto</button>
+            <button class="btn sec" (click)="cancelarCriacao()">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    }
+
     @if (produto(); as p) {
       <div class="cod">
         <div>
           <div class="bloco">
             <h3>Produto</h3>
             <div class="grade2">
-              <div class="campo"><label class="rot">Código</label><input [value]="p.codigo" disabled></div>
-              <div class="campo"><label class="rot">Embalagem</label>
-                <input [value]="(p.embalagem || '') + ' c/ ' + (p.embalagemQtd || 0)" disabled></div>
+              <div class="campo"><label class="rot">Código</label>
+                <input [value]="p.codigo" disabled></div>
+              <div class="campo"><label class="rot">EAN-13 da unidade</label>
+                <input [(ngModel)]="form.ean" maxlength="13" [disabled]="!podeGravar"></div>
             </div>
-            <div class="campo"><label class="rot">Descrição</label><input [value]="p.descricao" disabled></div>
-            <div class="campo"><label class="rot">EAN-13 da unidade</label>
-              <input [value]="p.ean[0] || '—'" disabled></div>
+            <div class="campo"><label class="rot">Descrição</label>
+              <input [(ngModel)]="form.descricao" maxlength="60" [disabled]="!podeGravar"></div>
+            <div class="grade2">
+              <div class="campo"><label class="rot">Embalagem</label>
+                <input [(ngModel)]="form.embalagem" maxlength="10" placeholder="CX"
+                       [disabled]="!podeGravar"></div>
+              <div class="campo"><label class="rot">Quantidade por embalagem</label>
+                <input type="number" [(ngModel)]="form.embalagemQtd" [disabled]="!podeGravar"></div>
+            </div>
           </div>
 
           <div class="bloco">
@@ -82,15 +116,15 @@ import { Api, Produto, Etiqueta } from '../api/api';
               <div class="campo">
                 <label class="rot" [for]="'dun'+slot">Barr Emb {{ slot + 1 }}</label>
                 <input [id]="'dun'+slot" [(ngModel)]="dun[slot]" [class.err]="erroSlot() === slot"
-                       maxlength="14" autocomplete="off" [disabled]="!podeAlterar">
+                       maxlength="14" autocomplete="off" [disabled]="!podeGravar">
                 @if (erroSlot() === slot) { <div class="msg-err">{{ erroMensagem() }}</div> }
               </div>
             }
             <div class="acoes">
-              <button class="btn" (click)="gravar()" [disabled]="!podeAlterar">Gravar</button>
+              <button class="btn" (click)="gravar()" [disabled]="!podeGravar">Gravar</button>
               <button class="btn sec" (click)="carregar()">Descartar</button>
             </div>
-            @if (!podeAlterar) {
+            @if (!podeGravar) {
               <div class="msg-err" style="margin-top:10px">
                 Sua matrícula não tem permissão de alteração em estoq — somente leitura.
               </div>
@@ -138,7 +172,11 @@ export class Codigos {
   private busca = viewChild<ElementRef<HTMLInputElement>>('busca');
 
   codigoBusca = this.rota.snapshot.queryParamMap.get('codigo') ?? '';
+  /** Story 3.1: a conferência manda para cá com o código bipado, e volta ao concluir. */
+  private voltarPara = this.rota.snapshot.queryParamMap.get('voltar');
   produto = signal<Produto | null>(null);
+  criando = signal(false);
+  form = { codigo: '', descricao: '', embalagem: '', embalagemQtd: undefined as number | undefined, ean: '' };
   etiqueta = signal<Etiqueta | null>(null);
   dun: (string | null)[] = ['', '', ''];
   erroSlot = signal<number | null>(null);
@@ -147,7 +185,8 @@ export class Codigos {
   gravado = signal(false);
   confirmacao = signal('');
 
-  get podeAlterar() { return this.api.pode('estoq', 'alterar'); }
+  get podeGravar() { return this.api.pode('estoq', 'alterar'); }
+  get podeIncluir() { return this.api.pode('estoq', 'incluir'); }
 
   constructor() {
     if (!this.api.sessao() && !this.api.restaurar()) { this.router.navigate(['/entrar']); }
@@ -162,13 +201,53 @@ export class Codigos {
     try {
       const p = await this.api.produto(this.codigoBusca.trim());
       this.produto.set(p);
+      this.criando.set(false);
       this.dun = [p.dun[0] ?? '', p.dun[1] ?? '', p.dun[2] ?? ''];
+      this.form = { codigo: p.codigo, descricao: p.descricao, embalagem: p.embalagem ?? '',
+                    embalagemQtd: p.embalagemQtd, ean: p.ean[0] ?? '' };
       await this.carregarEtiqueta();
     } catch {
       this.produto.set(null);
       this.etiqueta.set(null);
-      this.erroGeral.set('Código não cadastrado!');   // RK-e84d750f340a
+      if (this.podeIncluir) {
+        // FR-28: quem pode incluir cadastra o produto novo aqui mesmo.
+        this.criando.set(true);
+        this.form = { codigo: this.codigoBusca.trim(), descricao: '', embalagem: '',
+                      embalagemQtd: undefined, ean: '' };
+        this.dun = ['', '', ''];
+        this.erroGeral.set('Código não cadastrado! Preencha para cadastrar agora.');
+      } else {
+        this.erroGeral.set('Código não cadastrado!');   // RK-e84d750f340a
+      }
     }
+  }
+
+  async criar() {
+    this.limparErros();
+    try {
+      await this.api.criarProduto({
+        codigo: this.form.codigo, descricao: this.form.descricao,
+        embalagem: this.form.embalagem || undefined, embalagemQtd: this.form.embalagemQtd,
+        ean: this.form.ean || undefined, dun: this.dun,
+      });
+      this.criando.set(false);
+      this.codigoBusca = this.form.codigo;
+      await this.carregar();
+      this.gravado.set(true);
+      // Story 3.1: ao concluir, volta à conferência de onde veio.
+      if (this.voltarPara) this.router.navigateByUrl(this.voltarPara);
+    } catch (e: any) {
+      const detalhe = e?.error?.detail ?? 'Não foi possível cadastrar.';
+      this.erroSlot.set(this.slotDoErro(e?.error?.ruleKey));
+      this.erroMensagem.set(detalhe);
+      if (this.erroSlot() === null) this.erroGeral.set(detalhe);
+    }
+  }
+
+  cancelarCriacao() {
+    this.criando.set(false);
+    this.limparErros();
+    if (this.voltarPara) this.router.navigateByUrl(this.voltarPara);
   }
 
   private async carregarEtiqueta() {
@@ -180,7 +259,14 @@ export class Codigos {
     this.limparErros();
     this.confirmacao.set('');
     try {
+      // Os códigos passam pelo endpoint que carrega as confirmações do legado;
+      // descrição, embalagem e quantidade vão pelo endpoint do produto (FR-28).
       await this.api.gravarCodigos(this.produto()!.codigo, this.dun, confirmado);
+      await this.api.salvarProduto({
+        codigo: this.produto()!.codigo, descricao: this.form.descricao,
+        embalagem: this.form.embalagem || undefined, embalagemQtd: this.form.embalagemQtd,
+        ean: this.form.ean || undefined, dun: this.dun,
+      });
       this.gravado.set(true);
       await this.carregar();
     } catch (e: any) {
