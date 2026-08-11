@@ -269,6 +269,9 @@ file sealed class ProdutoRepoFake(params Produto[] produtos) : IProdutoRepositor
         => Task.FromResult(produtos.FirstOrDefault(p => p.Codigo != exceto && p.DunPreenchidos.Contains(cb)));
     public Task Salvar(Produto p, CancellationToken ct = default)
     { Salvos.Add(p.Codigo); return Task.CompletedTask; }
+    public List<string> Inseridos { get; } = [];
+    public Task Inserir(Produto p, CancellationToken ct = default)
+    { Inseridos.Add(p.Codigo); return Task.CompletedTask; }
 }
 
 file sealed class AuditoriaVazia : IAuditoria
@@ -450,5 +453,79 @@ public class RegrasConcorrencia
 
         Assert.True(r.Passou);
         Assert.Contains("04127=30", repo.Gravacoes);
+    }
+}
+
+public class RegrasManterProduto
+{
+    private static Produto Cola() => new()
+    {
+        Codigo = "04127", Descricao = "REFRIGERANTE COLA 2L", Embalagem = "CX", EmbalagemQtd = 6,
+        Ean = ["7891234567897", null, null], Dun = ["17891234567894", null, null]
+    };
+
+    private static PedidoProduto Novo(string codigo, string descricao, params string[] dun)
+        => new(codigo, descricao, "CX", 20, "7891111000015", dun.Length > 0 ? dun : ["", "", ""]);
+
+    [Fact(DisplayName = "FR-28 · criar produto grava descrição, embalagem e quantidade")]
+    public async Task FR28_criar_produto()
+    {
+        var repo = new ProdutoRepoFake();
+        var r = await new ManterProduto(repo, new AuditoriaVazia())
+            .Criar(Novo("08100", "CAFE TORRADO 500G"), "04310");
+        Assert.True(r.Passou);
+        Assert.Contains("08100", repo.Inseridos);
+    }
+
+    [Fact(DisplayName = "FR-28 · criar produto sem descrição é recusado")]
+    public async Task FR28_descricao_obrigatoria()
+    {
+        var repo = new ProdutoRepoFake();
+        var r = await new ManterProduto(repo, new AuditoriaVazia()).Criar(Novo("08100", "  "), "04310");
+        Assert.Equal(TipoResultado.Recusado, r.Tipo);
+        Assert.Empty(repo.Inseridos);
+    }
+
+    [Fact(DisplayName = "FR-28 · criar produto que já existe é recusado")]
+    public async Task FR28_produto_duplicado()
+    {
+        var repo = new ProdutoRepoFake(Cola());
+        var r = await new ManterProduto(repo, new AuditoriaVazia())
+            .Criar(Novo("04127", "OUTRO NOME"), "04310");
+        Assert.Equal(TipoResultado.Recusado, r.Tipo);
+        Assert.Contains("já existe", r.Mensagem);
+        Assert.Empty(repo.Inseridos);
+    }
+
+    [Fact(DisplayName = "RK-2976e3756f6d · criar produto com DUN de outro é recusado")]
+    public async Task RK_2976e3756f6d_criar_com_dun_alheio()
+    {
+        var repo = new ProdutoRepoFake(Cola());
+        var r = await new ManterProduto(repo, new AuditoriaVazia())
+            .Criar(Novo("08100", "CAFE", "17891234567894", "", ""), "04310");
+        Assert.Equal(TipoResultado.Recusado, r.Tipo);
+        Assert.Contains("REFRIGERANTE COLA 2L", r.Mensagem);
+        Assert.Empty(repo.Inseridos);
+    }
+
+    [Fact(DisplayName = "FR-28 · alterar produto grava os campos e registra o antes e o depois")]
+    public async Task FR28_alterar_produto()
+    {
+        var repo = new ProdutoRepoFake(Cola());
+        var r = await new ManterProduto(repo, new AuditoriaVazia())
+            .Alterar(new PedidoProduto("04127", "REFRIGERANTE COLA 2 LITROS", "CX", 12,
+                                       "7891234567897", ["17891234567894", "", ""]), "04310");
+        Assert.True(r.Passou);
+        Assert.Contains("04127", repo.Salvos);
+    }
+
+    [Fact(DisplayName = "RK-e84d750f340a · alterar produto inexistente é recusado")]
+    public async Task RK_e84d750f340a_alterar_inexistente()
+    {
+        var repo = new ProdutoRepoFake();
+        var r = await new ManterProduto(repo, new AuditoriaVazia())
+            .Alterar(new PedidoProduto("99999", "X", null, null, null, ["", "", ""]), "04310");
+        Assert.Equal(TipoResultado.Recusado, r.Tipo);
+        Assert.Equal("Código não cadastrado!", r.Mensagem);
     }
 }
