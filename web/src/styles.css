@@ -1,0 +1,38 @@
+/* Tokens do DESIGN.md — Direção C · Painel de Operação */
+:root{
+  --surface-base:#0F1417; --surface-raised:#182027; --surface-overlay:#1F2A32;
+  --border:#2C3A44; --border-strong:#3E5262;
+  --text:#E8EEF2; --text-muted:#8FA3B0; --text-disabled:#5B6D78;
+  --focus:#3DD6D0; --focus-glow:rgba(61,214,208,.13);
+  --accept:#34D399; --accept-wash:rgba(52,211,153,.16);
+  --attention:#FBBF24; --attention-wash:rgba(251,191,36,.16);
+  --reject:#F87171; --reject-wash:rgba(248,113,113,.14);
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --r-sm:2px; --r:8px; --r-md:10px; --r-lg:12px;
+  --s1:4px; --s2:8px; --s3:12px; --s4:14px; --s5:16px; --s6:22px; --s7:32px;
+  --m-flash:120ms; --m-shift:260ms; --m-route:340ms; --m-celebrate:620ms;
+  --ease-out:cubic-bezier(.22,1,.36,1);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--surface-base);color:var(--text);
+  font-family:var(--sans);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font-family:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.rot{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);display:block}
+.pill{display:inline-block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  padding:2px 8px;border-radius:9999px;font-weight:600}
+.p-ok{background:var(--accept-wash);color:var(--accept)}
+.p-div{background:var(--attention-wash);color:var(--attention)}
+.p-agu{background:rgba(143,163,176,.14);color:var(--text-muted)}
+.p-err{background:var(--reject-wash);color:var(--reject)}
+.barra{background:var(--surface-raised);border-bottom:1px solid var(--border);
+  padding:11px 16px;font-size:12px;color:var(--text-muted);display:flex;gap:16px;align-items:center}
+.barra b{color:var(--text);font-weight:600}
+.barra .pt{margin-left:auto;font-family:var(--mono);font-size:11px}
+.btn{background:var(--focus);color:#08201F;border:0;border-radius:var(--r);
+  padding:12px 18px;font-size:15px;font-weight:600;cursor:pointer}
+.btn.sec{background:transparent;color:var(--text);border:1px solid var(--border)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}

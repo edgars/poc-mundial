@@ -1,0 +1,49 @@
+services:
+  # O alvo declarado no spine é SQL Server 2022. Em Apple Silicon a imagem oficial só existe
+  # para amd64 e quebra sob emulação ("Invalid mapping of address"), então DB_IMAGE aponta para
+  # o Azure SQL Edge, que é o mesmo motor com imagem ARM64 nativa. Trocar de volta é mudar o .env.
+  db:
+    image: ${DB_IMAGE}
+    user: ${DB_USER}
+    environment:
+      ACCEPT_EULA: "1"
+      MSSQL_SA_PASSWORD: ${SA_PASSWORD}
+    ports: ["1433:1433"]
+    volumes:
+      - dados-sgm:/var/opt/mssql          # NFR-12: o dado sobrevive a down + up
+
+  migracoes:
+    build:
+      context: ./src
+      target: migracoes
+    environment:
+      CONNECTION_STRING: ${CONNECTION_STRING}
+    depends_on: [db]
+    restart: "no"
+
+  api:
+    build:
+      context: ./src
+      target: api
+    environment:
+      CONNECTION_STRING: ${CONNECTION_STRING}
+      MODO_DEMO: ${MODO_DEMO}
+      ORIGEM_WEB: ${ORIGEM_WEB}
+      TZ_APLICACAO: ${TZ_APLICACAO}
+      INTEGRACAO_ESTOQUE_EXTERNO: ${INTEGRACAO_ESTOQUE_EXTERNO}
+    ports: ["${PORTA_API}:5000"]
+    depends_on:
+      migracoes:
+        condition: service_completed_successfully
+
+  web:
+    build:
+      context: ./web
+      target: web
+    environment:
+      API_URL: ${API_URL}
+    ports: ["3000:3000"]
+    depends_on: [api]
+
+volumes:
+  dados-sgm:

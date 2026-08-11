@@ -119,7 +119,7 @@ declarados em `Aplicacao` — nunca o contrário.
 
 - **Binds:** todo endpoint, toda rota Angular
 - **Prevents:** cada tela inventando seu próprio controle de acesso, ou permissão só no frontend. E o erro que este AD já cometeu: tratar `arquivo` como identificador de **tela**, o que faria uma tela que lê duas tabelas exigir uma permissão só.
-- **Rule:** `acesso(matric, arquivo)` com as flags `alterar`, `incluir`, `excluir`, `consultar` vira policy-based authorization. **`arquivo` é o nome da tabela** (`char(10)`) — confirmado no `readme.txt` do cliente e no DDL. Uma tela que toca N tabelas exige as N permissões correspondentes. A policy é aplicada no endpoint (autoridade) e espelhada na rota Angular (conveniência). Ausência de linha em `acesso` = negado.
+- **Rule:** `acesso(matric, arquivo)` com as flags `alterar`, `incluir`, `excluir`, `consultar` vira policy-based authorization. **`arquivo` é o nome da tabela** (`char(10)`) — confirmado no `readme.txt` do cliente e no DDL. Como `conferencia` tem 11 caracteres e não cabe, a chave de permissão é o nome **truncado em 10** (ver F-9 e Q-10). Uma tela que toca N tabelas exige as N permissões correspondentes. A policy é aplicada no endpoint (autoridade) e espelhada na rota Angular (conveniência). Ausência de linha em `acesso` = negado.
 
 ### AD-9 — Dapper com SQL explícito; migrations em DbUp
 

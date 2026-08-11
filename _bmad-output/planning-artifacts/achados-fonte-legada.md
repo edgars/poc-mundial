@@ -64,8 +64,8 @@ Do `readme.txt`, escrito pelo cliente:
 > `acesso`: … onde "arquivo" seria o **nome da tabela** que seria acessada para definir as
 > permissões por usuário e "matric" seria a matrícula interna do usuário na empresa.
 
-O DDL confirma: `[arquivo] [char](10) NOT NULL` — dez caracteres, que é exatamente o tamanho dos
-nomes `estoq`, `conferencia`, `forne`, `usuario`, `acesso`, `log_even`.
+O DDL confirma: `[arquivo] [char](10) NOT NULL`. *(Dez caracteres acomodam `estoq`, `forne`,
+`acesso`, `usuario` e `log_even` — mas **não** `conferencia`, que tem 11. Ver F-9.)*
 
 **Consequência:** AD-8 e FR-5 diziam "`arquivo` identifica a tela". Errado — a permissão é **por
 tabela**. Uma tela que lê duas tabelas exige as duas permissões.
@@ -132,6 +132,22 @@ Semântica: inclusão grava `val_ant = 'Registro Incluido'`; exclusão grava
 **Consequência:** a suposição A-1 morre. O schema é recuperado, não inventado — e o FR-41 inventava
 campos que não existem (`ação`, `origem`).
 
+### F-9 — `acesso.arquivo` é curto demais para `conferencia`
+
+Descoberto ao semear o banco: o `INSERT` falhou com *"String or binary data would be truncated in
+table 'sgm.dbo.acesso', column 'arquivo'. Truncated value: 'conferenci'"*.
+
+`acesso.arquivo` é `char(10)`, e **`conferencia` tem 11 caracteres**. O F-4 afirmava que a largura
+acomodava os nomes das tabelas — não acomoda o mais importante deles.
+
+Todas as outras cabem: `estoq` (5), `forne` (5), `acesso` (6), `usuario` (7), `log_even` (8).
+
+**Consequência:** o legado nunca conseguiu guardar o nome inteiro. A chave de permissão é o nome
+truncado em 10 caracteres, e isso virou `Tabelas.Chave()` no domínio. Registrado como **Q-10**:
+confirmar com a Mundial se o legado grava `conferenci` ou outro identificador.
+
+Este achado só apareceria em execução — nenhuma leitura de documento o pegaria.
+
 ---
 
 ## Q-4 — resolvida: `barr_emb3` existe
@@ -196,3 +212,4 @@ invenção minha e foi corrigida.
 | Q-6 | existe tolerância de divergência | não aparece no schema nem no PRG |
 | Q-7 | destino do item pendente no fechamento | `pendencia bit` existe, semântica não |
 | Q-9 | quantas docas | `doca int`, sem domínio declarado |
+| Q-10 | o que o legado grava em `acesso.arquivo` para a tabela `conferencia`, que não cabe em `char(10)` | descoberto em execução; ver F-9 |
