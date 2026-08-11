@@ -113,8 +113,16 @@ runcmd:
         ;;
     esac
 
+    # O Caddy aceita o host puro (e emite TLS) ou com esquema http:// explícito.
+    # A aplicação precisa da URL completa: é o que vai em API_URL e em ORIGEM_WEB.
+    case "$ENDERECO" in
+      http://*) URL_PUBLICA="$ENDERECO" ;;
+      *)        URL_PUBLICA="https://$ENDERECO" ;;
+    esac
+
     sed -i "s|__ENDERECO__|$ENDERECO|g" /opt/mundial/Caddyfile
-    echo "$ENDERECO" > /opt/mundial/endereco.txt
+    echo "$ENDERECO"    > /opt/mundial/endereco.txt
+    echo "$URL_PUBLICA" > /opt/mundial/url-publica.txt
 
   # --------------------------------------------------------------------------
   # 4. Segredos. Gerados aqui, na primeira inicialização — nunca passam pelo
@@ -122,22 +130,28 @@ runcmd:
   # --------------------------------------------------------------------------
   - |
     if [ ! -f /opt/mundial/.env ]; then
+      URL_PUBLICA="$(cat /opt/mundial/url-publica.txt)"
+      # A senha do SA precisa de maiúscula, minúscula, número e símbolo.
       SENHA_SA="$(openssl rand -base64 33 | tr -dc 'A-Za-z0-9')Aa1!"
-      JWT="$(openssl rand -base64 64 | tr -dc 'A-Za-z0-9')"
       cat > /opt/mundial/.env <<EOF
     # Gerado na primeira inicialização da máquina. Não versionar.
+    # Espelha o .env.example do repositório, com os valores desta máquina.
     TAG=${tag}
     IMAGEM_SQLSERVER=${imagem_sqlserver}
     IMAGEM_API=${imagem_api}
     IMAGEM_WEB=${imagem_web}
-    IMAGEM_MIGRATIONS=${imagem_migrations}
+    IMAGEM_MIGRACOES=${imagem_migracoes}
 
-    MSSQL_SA_PASSWORD=$SENHA_SA
-    CONNECTION_STRING=Server=db,1433;Database=sgm;User Id=sa;Password=$SENHA_SA;TrustServerCertificate=True;Encrypt=True
-    JWT_ASSINATURA=$JWT
+    SA_PASSWORD=$SENHA_SA
+    CONNECTION_STRING=Server=db,1433;Database=sgm;User Id=sa;Password=$SENHA_SA;TrustServerCertificate=true;Encrypt=false
+
+    # Mesma origem para o navegador e para o CORS da API.
+    URL_PUBLICA=$URL_PUBLICA
+    ORIGEM_WEB=$URL_PUBLICA
 
     TZ_APLICACAO=${fuso}
     MODO_DEMO=${modo_demo}
+    INTEGRACAO_ESTOQUE_EXTERNO=false
     EOF
       chmod 600 /opt/mundial/.env
       chown root:root /opt/mundial/.env

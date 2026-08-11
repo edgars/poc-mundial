@@ -20,14 +20,17 @@ infra/terraform/
 ## Arquitetura da máquina
 
 ```
-navegador → Caddy :443 ─┬─ /      → web:80    (Angular estático)
-                        └─ /api/* → api:8080  (ASP.NET Core)
+navegador → Caddy :443 ─┬─ /      → web:3000  (nginx com o Angular compilado)
+                        └─ /api/* → api:5000  (ASP.NET Core)
                                        └── db:1433 (só na rede do compose)
 ```
 
-Tudo na mesma origem: sem CORS, e um só lugar para o certificado. Aponta-se o
-navegador para o domínio, nunca para `http://api:8080` — nome de serviço do
-compose só resolve dentro da máquina.
+Tudo na mesma origem: sem CORS, e um só lugar para o certificado. O `API_URL`
+que o container web injeta no `index.html` é a URL pública — nunca um nome de
+serviço do compose, que só resolve dentro da máquina.
+
+Espelha o `docker-compose.yml` da raiz, com três diferenças: imagens publicadas
+em vez de build, sem porta de banco nem de API expostas, e o proxy na frente.
 
 ## A restrição de arquitetura, verificada
 
@@ -73,16 +76,40 @@ terraform apply
 
 Saem o IP público, a URL e os próximos passos.
 
-### 2. Apontar o DNS — se usar domínio
+### 2. Apontar o DNS
 
-Crie o registro A com o IP da saída do apply, e espere resolver:
+A Tencent **não** dá hostname de teste por instância como a Azure faz com
+`*.cloudapp.azure.com` — a CVM entrega só IP. Três caminhos, e o Terraform
+escolhe nesta precedência:
+
+| Modo | Quando usar | O que você faz |
+| --- | --- | --- |
+| `dominio` | demonstração com cliente | cria o registro A e espera resolver |
+| `duckdns` | ensaio com HTTPS | preenche `duckdns_subdominio` e `duckdns_token` |
+| `sslip` | ensaio rápido, sem cadastro | nada |
+
+**Domínio próprio.** Crie o registro A com o IP da saída do apply:
 
 ```bash
 dig +short poc.seudominio.com.br
 ```
 
 O Caddy só emite o certificado depois que o nome resolver para esta máquina.
-Sem `dominio` configurado, pule este passo: a aplicação responde em HTTP na 80.
+
+**DuckDNS.** Cadastro grátis em https://www.duckdns.org, e nada a fazer no DNS:
+a máquina registra o próprio IP no boot e um timer systemd renova a cada 30
+minutos. O endereço vira `<subdominio>.duckdns.org`, com HTTPS automático.
+
+**sslip.io.** Sem nenhuma variável preenchida, a aplicação responde em
+`http://<ip>.sslip.io` — o hostname resolve para o próprio IP, sem cadastro.
+
+⚠️ Este modo serve **HTTP puro de propósito**. `sslip.io` não está na Public
+Suffix List, então o Let's Encrypt trata todo o domínio como um só: 50
+certificados por semana no mundo inteiro, e o limite costuma estar esgotado.
+Tentar TLS aqui é descobrir que falhou na hora da apresentação. `duckdns.org`
+está na PSL, e por isso é a opção grátis recomendada quando se quer HTTPS.
+
+Depois do boot, o endereço escolhido fica em `/opt/mundial/endereco.txt`.
 
 ### 3. Esperar o cloud-init
 
@@ -91,22 +118,29 @@ ssh ubuntu@<ip> 'cloud-init status --wait'
 ssh ubuntu@<ip> 'sudo docker compose -f /opt/mundial/docker-compose.yml ps'
 ```
 
-Ao fim disto o SQL Server já está no ar e saudável. A aplicação ainda não —
-as imagens não existem até a Story 1.1 ser implementada.
+Ao fim disto o SQL Server já está no ar e saudável — SQL Server 2022 de verdade,
+o alvo do spine. O `azure-sql-edge` do `.env.example` existe só para
+desenvolvimento em Apple Silicon; nesta CVM x86 não é preciso.
+
+A aplicação sobe no passo 5, depois que as imagens estiverem no registry.
 
 ### 4. Publicar as imagens
 
 Compile na sua máquina ou em CI, nunca na CVM — o build do Angular e do .NET
 não cabe confortavelmente em 8 GB junto com o SQL Server.
 
+O `src/Dockerfile` tem dois alvos (`api` e `migracoes`) e o `web/Dockerfile`
+tem um (`web`):
+
 ```bash
-docker build -t <tcr>/mundial-api:0.1.0        -f src/Mundial.Api/Dockerfile .
-docker build -t <tcr>/mundial-migrations:0.1.0 -f src/Mundial.Migrations/Dockerfile .
-docker build -t <tcr>/mundial-web:0.1.0        -f web/Dockerfile .
-docker push <tcr>/mundial-api:0.1.0
-docker push <tcr>/mundial-migrations:0.1.0
-docker push <tcr>/mundial-web:0.1.0
+docker buildx build --platform linux/amd64 --target api       -t <tcr>/mundial-api:0.1.0       --push ./src
+docker buildx build --platform linux/amd64 --target migracoes -t <tcr>/mundial-migracoes:0.1.0 --push ./src
+docker buildx build --platform linux/amd64 --target web       -t <tcr>/mundial-web:0.1.0       --push ./web
 ```
+
+⚠️ **`--platform linux/amd64` não é opcional se você compila em Mac com Apple
+Silicon.** Sem a flag, o build produz imagens arm64 que não rodam na CVM x86, e
+o erro só aparece no `docker compose up` lá, com "exec format error".
 
 Espelhe também a imagem do SQL Server no seu TCR — assim a apresentação não
 depende do MCR estar acessível naquele momento:
@@ -127,17 +161,19 @@ sudo docker login <tcr>          # uma vez por máquina
 sudo /opt/mundial/subir.sh
 ```
 
-O `subir.sh` faz `pull` e `up -d` com o profile `app`: migrations roda uma vez,
-a API só sobe depois que o DbUp sair com código 0, o web só depois que a API
-ficar saudável.
+O `subir.sh` faz `pull` e `up -d` com o profile `app`: `migracoes` roda uma vez,
+a API só sobe depois que o DbUp sair com código 0, e o web só depois que a API
+responder na porta.
 
 ### 6. Conferir
 
 ```bash
 sudo docker compose -f /opt/mundial/docker-compose.yml ps
-sudo docker compose -f /opt/mundial/docker-compose.yml logs migrations
-curl -fsS https://poc.seudominio.com.br/api/health
+sudo docker compose -f /opt/mundial/docker-compose.yml logs migracoes
+curl -fsS "$(cat /opt/mundial/url-publica.txt)/api/saude"
 ```
+
+A resposta esperada é `{"estado":"no ar","modoDemo":true}`.
 
 ### 7. Snapshot antes de apresentar
 
@@ -164,9 +200,12 @@ apresentação é desperdício.
 
 ## Segredos
 
-`MSSQL_SA_PASSWORD` e `JWT_ASSINATURA` são gerados **na máquina**, no primeiro
-boot, e gravados em `/opt/mundial/.env` com permissão `600`. Não passam pelo
-estado do Terraform e não existem em lugar nenhum do repositório.
+`SA_PASSWORD` e a `CONNECTION_STRING` que a carrega são gerados **na máquina**,
+no primeiro boot, e gravados em `/opt/mundial/.env` com permissão `600`. Não
+passam pelo estado do Terraform e não existem em lugar nenhum do repositório.
+
+O resto do `.env` espelha o `.env.example` da raiz, com `URL_PUBLICA` e
+`ORIGEM_WEB` preenchidos com o endereço que o boot resolveu.
 
 Para lê-los: `sudo cat /opt/mundial/.env`.
 
@@ -177,5 +216,6 @@ Para lê-los: `sudo cat /opt/mundial/.env`.
   destruir junto com a máquina apagaria as imagens.
 - **Não faz backup.** Fora do escopo da POC por decisão registrada no PRD. Para
   o dia da apresentação, o snapshot do passo 7 basta.
-- **Não gerencia DNS.** O registro A é manual. Se o domínio estiver no DNSPod,
-  dá para automatizar com `tencentcloud_dnspod_record`.
+- **Não registra domínio.** Registro A de domínio próprio é manual; o DuckDNS e
+  o sslip.io são automáticos. Se o domínio estiver no DNSPod (da própria
+  Tencent), dá para automatizar o registro A com `tencentcloud_dnspod_record`.

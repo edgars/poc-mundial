@@ -19,9 +19,9 @@ locals {
 
   prefixo_registry = var.registry != "" ? "${trimsuffix(var.registry, "/")}/" : ""
 
-  imagem_api        = "${local.prefixo_registry}mundial-api:${var.tag_imagens}"
-  imagem_web        = "${local.prefixo_registry}mundial-web:${var.tag_imagens}"
-  imagem_migrations = "${local.prefixo_registry}mundial-migrations:${var.tag_imagens}"
+  imagem_api       = "${local.prefixo_registry}mundial-api:${var.tag_imagens}"
+  imagem_web       = "${local.prefixo_registry}mundial-web:${var.tag_imagens}"
+  imagem_migracoes = "${local.prefixo_registry}mundial-migracoes:${var.tag_imagens}"
 
   # O endereço do Caddy é resolvido na máquina, no boot, porque o modo sslip.io
   # depende do IP público — que a própria máquina descobre pelo metadata.
@@ -42,20 +42,20 @@ locals {
   })
 
   cloud_init = templatefile("${path.module}/modelos/cloud-init.yaml.tftpl", {
-    compose_conteudo  = file("${path.module}/arquivos/docker-compose.yml")
-    caddy_conteudo    = local.caddyfile
-    subir_conteudo    = file("${path.module}/arquivos/subir.sh")
-    imagem_sqlserver  = var.imagem_sqlserver
-    imagem_api        = local.imagem_api
-    imagem_web        = local.imagem_web
-    imagem_migrations = local.imagem_migrations
-    tag               = var.tag_imagens
-    fuso              = var.fuso_aplicacao
-    modo_demo         = var.modo_demo ? "true" : "false"
-    modo_dns          = local.modo_dns
-    dominio           = var.dominio
-    duckdns_sub       = var.duckdns_subdominio
-    duckdns_token     = var.duckdns_token
+    compose_conteudo = file("${path.module}/arquivos/docker-compose.yml")
+    caddy_conteudo   = local.caddyfile
+    subir_conteudo   = file("${path.module}/arquivos/subir.sh")
+    imagem_sqlserver = var.imagem_sqlserver
+    imagem_api       = local.imagem_api
+    imagem_web       = local.imagem_web
+    imagem_migracoes = local.imagem_migracoes
+    tag              = var.tag_imagens
+    fuso             = var.fuso_aplicacao
+    modo_demo        = var.modo_demo ? "true" : "false"
+    modo_dns         = local.modo_dns
+    dominio          = var.dominio
+    duckdns_sub      = var.duckdns_subdominio
+    duckdns_token    = var.duckdns_token
   })
 
   etiquetas = {

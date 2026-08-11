@@ -1,25 +1,29 @@
 # Composição de produção da POC — Mundial · Conferência de Recebimento.
 #
 # Escrito na máquina pelo cloud-init. Valores vêm de /opt/mundial/.env.
+# Espelha o docker-compose.yml da raiz do repositório, com três diferenças:
+# usa imagens publicadas em vez de build, não expõe porta de banco nem de API,
+# e põe um proxy reverso na frente para servir tudo na mesma origem.
 #
 #   docker compose up -d                 sobe apenas o banco
-#   docker compose --profile app up -d   sobe migrations, api, web e proxy
-#
-# O SQL Server nunca publica porta: 1433 só existe dentro da rede do compose.
+#   docker compose --profile app up -d   sobe migrações, api, web e proxy
 
 name: mundial
 
 services:
 
+  # Aqui é SQL Server 2022 de verdade, o alvo do spine. O azure-sql-edge do
+  # .env.example existe só para desenvolvimento em Apple Silicon: a imagem do
+  # SQL Server é publicada apenas para linux/amd64. Nesta CVM x86 não é preciso.
   db:
     image: ${IMAGEM_SQLSERVER}
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+      MSSQL_SA_PASSWORD: ${SA_PASSWORD}
       MSSQL_PID: Developer
       TZ: ${TZ_APLICACAO}
     volumes:
-      - dados-sql:/var/opt/mssql
+      - dados-sgm:/var/opt/mssql
     healthcheck:
       test:
         - CMD-SHELL
@@ -32,11 +36,11 @@ services:
       retries: 30
       start_period: 40s
     restart: unless-stopped
+    # sem ports: 1433 só existe dentro da rede do compose
 
-  # Roda uma vez, aplica os scripts DbUp e sai. Idempotente: script já
-  # aplicado não roda de novo. Seed nunca entra aqui (AD-21).
-  migrations:
-    image: ${IMAGEM_MIGRATIONS}
+  # Roda uma vez, aplica os scripts DbUp e sai. Idempotente. Seed nunca aqui (AD-21).
+  migracoes:
+    image: ${IMAGEM_MIGRACOES}
     profiles: ["app"]
     environment:
       CONNECTION_STRING: ${CONNECTION_STRING}
@@ -50,34 +54,40 @@ services:
     profiles: ["app"]
     environment:
       CONNECTION_STRING: ${CONNECTION_STRING}
-      JWT_ASSINATURA: ${JWT_ASSINATURA}
-      TZ_APLICACAO: ${TZ_APLICACAO}
       MODO_DEMO: ${MODO_DEMO}
-      ASPNETCORE_URLS: http://+:8080
+      ORIGEM_WEB: ${ORIGEM_WEB}
+      TZ_APLICACAO: ${TZ_APLICACAO}
+      INTEGRACAO_ESTOQUE_EXTERNO: ${INTEGRACAO_ESTOQUE_EXTERNO}
     depends_on:
       db:
         condition: service_healthy
-      migrations:
+      migracoes:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health || exit 1"]
+      # A imagem aspnet não traz curl; o teste de porta basta para o depends_on.
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/5000'"]
       interval: 10s
       timeout: 5s
       retries: 12
-      start_period: 30s
+      start_period: 20s
     restart: unless-stopped
+    # sem ports: quem fala com a API é o proxy
 
   web:
     image: ${IMAGEM_WEB}
     profiles: ["app"]
+    environment:
+      # Injetada no index.html na subida do container. É a origem pública, e o
+      # frontend acrescenta /api — que o proxy roteia para a API.
+      API_URL: ${URL_PUBLICA}
     depends_on:
       api:
         condition: service_healthy
     restart: unless-stopped
 
-  # Serve tudo na mesma origem: / vai para o web, /api vai para a api.
-  # Isso resolve o CORS e evita o erro clássico de apontar o navegador
-  # para http://api:8080, que só resolve dentro da rede do compose.
+  # Serve tudo na mesma origem: / vai para o web:3000, /api vai para a api:5000.
+  # Resolve o CORS e evita o erro clássico de apontar o navegador para um nome
+  # de serviço do compose, que só resolve dentro da máquina.
   proxy:
     image: caddy:2-alpine
     profiles: ["app"]
@@ -94,6 +104,6 @@ services:
     restart: unless-stopped
 
 volumes:
-  dados-sql:
+  dados-sgm:
   caddy-dados:
   caddy-config:

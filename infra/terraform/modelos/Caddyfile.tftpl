@@ -6,13 +6,14 @@
 ${endereco} {
 	encode zstd gzip
 
-	# Sem strip do prefixo: as rotas da API já são /api/<recurso> (AD-15).
+	# Sem strip do prefixo: as rotas da API já nascem com /api
+	# (/api/saude, /api/entrar, /api/conferencia, /api/docas…).
 	handle /api/* {
-		reverse_proxy api:8080
+		reverse_proxy api:5000
 	}
 
 	handle {
-		reverse_proxy web:80
+		reverse_proxy web:3000
 	}
 
 	log {

@@ -11,7 +11,7 @@ cd /opt/mundial
 if [ $# -ge 1 ]; then
   sed -i "s/^TAG=.*/TAG=$1/" .env
   # As três imagens carregam a tag no próprio valor; reescreve todas.
-  sed -i -E "s#^(IMAGEM_(API|WEB|MIGRATIONS)=.*):[^:]*\$#\1:$1#" .env
+  sed -i -E "s#^(IMAGEM_(API|WEB|MIGRACOES)=.*):[^:]*\$#\1:$1#" .env
   echo "TAG alterada para $1"
 fi
 
@@ -24,5 +24,7 @@ sleep 5
 docker compose ps
 
 echo
-echo "Se 'migrations' não aparecer, confira que ele saiu com código 0:"
-echo "  docker compose logs migrations"
+echo "Se 'migracoes' não aparecer no ps, confira que ele saiu com código 0:"
+echo "  docker compose logs migracoes"
+echo
+echo "Endereço público: $(cat /opt/mundial/url-publica.txt 2>/dev/null)"
