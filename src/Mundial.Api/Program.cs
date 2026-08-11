@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Mundial.Api;
 using Mundial.Aplicacao;
 using Mundial.Demo;
@@ -70,6 +71,22 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
      .AllowAnyHeader().AllowAnyMethod()));
 
 var app = builder.Build();
+
+// O proxy (Caddy) termina o TLS e fala http com a API. Sem honrar o X-Forwarded-Proto,
+// o Kestrel se enxerga em http e a spec OpenAPI anuncia servers: [http://...]. Como o
+// Swagger UI resolve o tokenUrl relativo contra esse servers, o botão Authorize dispara
+// um POST http a partir de uma página https e o navegador bloqueia por mixed content
+// ("NetworkError when attempting to fetch resource"). As redes conhecidas são limpas de
+// propósito: o proxy é outro container, com IP da rede do compose, não loopback.
+var encaminhados = new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost
+                       | ForwardedHeaders.XForwardedFor
+};
+encaminhados.KnownIPNetworks.Clear();
+encaminhados.KnownProxies.Clear();
+app.UseForwardedHeaders(encaminhados);
+
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
