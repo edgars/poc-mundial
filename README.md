@@ -54,6 +54,26 @@ preservado por rastreabilidade. Contém erros que produziriam o aplicativo errad
 
 Arquitetura em **ports & adapters**, com o domínio isolado e as 70 regras testáveis sem banco.
 
+## Observabilidade
+
+API e navegador emitem OpenTelemetry para um coletor OTLP (SigNoz). Configuração inteira no
+`.env`, com os nomes padrão do OTEL — veja `.env.example`. Deixar `OTEL_EXPORTER_OTLP_ENDPOINT`
+vazio desliga tudo, e a aplicação sobe igual.
+
+| Sinal | Origem | O que aparece |
+| --- | --- | --- |
+| Traces | ASP.NET Core, HttpClient, SqlClient, spans de negócio | request completo, incluindo a query e a regra (`regra.chave`) que recusou |
+| Métricas | ASP.NET Core, runtime .NET | latência, throughput, códigos HTTP, GC |
+| Logs | `ILogger` da API | cada linha com `trace_id`, ligada ao trace |
+| Navegador | carregamento da página e chamadas à API | trace único do clique até o SQL |
+
+O navegador posta em `/otlp` na própria origem, nunca no coletor: o ingest recusa preflight CORS
+e o bearer não pode viver no JavaScript. Quem acrescenta o `Authorization` é o nginx do container
+web (`web/entrypoint.sh`), no compose local e na máquina publicada.
+
+O texto do SQL e os parâmetros de query ficam fora dos spans de propósito — levariam número de
+nota, código de fornecedor e matrícula para fora da máquina.
+
 ## Como construir
 
 Você precisa de um agente de codificação com o BMAD instalado neste repositório.

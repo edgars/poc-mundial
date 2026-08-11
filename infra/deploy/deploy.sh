@@ -76,6 +76,18 @@ docker build --target web       -t "mundial-web:$ALVO"       -t mundial-web:atua
 # ---------------------------------------------------------------------- subida
 cd "$RAIZ"
 
+# O compose da máquina foi escrito pelo cloud-init na primeira subida e, até aqui,
+# nada o atualizava: mudanças em infra/terraform/ nem disparam deploy (o agente as
+# ignora). Variável nova no repositório ficava só no repositório — foi o que
+# aconteceria com as do OpenTelemetry. A cópia anterior fica ao lado, para conferir
+# o que mudou se algo quebrar.
+COMPOSE_REPO=$FONTE/infra/terraform/arquivos/docker-compose.yml
+if [ -f "$COMPOSE_REPO" ] && ! cmp -s "$COMPOSE_REPO" "$RAIZ/docker-compose.yml"; then
+  cp -f "$RAIZ/docker-compose.yml" "$RAIZ/docker-compose.yml.anterior" 2>/dev/null || true
+  install -m 644 "$COMPOSE_REPO" "$RAIZ/docker-compose.yml"
+  log "compose da máquina atualizado a partir do repositório"
+fi
+
 # O compose lê IMAGEM_* do .env. Sem reescrever aqui, ele recria os containers
 # a partir da tag antiga e o deploy vira um nada silencioso: o health check
 # passa porque a versão velha está saudável, e o commit novo nunca entra no ar.

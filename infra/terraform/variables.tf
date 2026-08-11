@@ -124,3 +124,28 @@ variable "fuso_aplicacao" {
   type        = string
   default     = "America/Sao_Paulo"
 }
+
+variable "otel_endpoint" {
+  description = <<-EOT
+    Base do coletor OTLP (SigNoz), sem o /v1/... no fim. Vazio desliga a telemetria
+    na máquina inteira — API e navegador — e a aplicação sobe igual.
+  EOT
+  type        = string
+  default     = ""
+}
+
+variable "otel_token" {
+  description = <<-EOT
+    Bearer do coletor. Vai para /opt/mundial/.env (chmod 600) e para o estado do
+    Terraform — mantenha terraform.tfstate fora do git, como o .gitignore já faz.
+  EOT
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "otel_ambiente" {
+  description = "Valor de deployment.environment nos sinais. Separa esta máquina do compose local."
+  type        = string
+  default     = "poc-vm"
+}

@@ -64,6 +64,12 @@ services:
       # ficou servindo uma imagem anterior ao guard até o pinning ser corrigido.
       JWT_SEGREDO: ${JWT_SEGREDO}
       SESSAO_MINUTOS: ${SESSAO_MINUTOS}
+      # Lidas pelo SDK do OpenTelemetry. Endpoint vazio desliga a instrumentação.
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT}
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL}
+      OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME}
+      OTEL_RESOURCE_ATTRIBUTES: ${OTEL_RESOURCE_ATTRIBUTES}
     depends_on:
       db:
         condition: service_healthy
@@ -86,6 +92,11 @@ services:
       # Injetada no index.html na subida do container. É a origem pública, e o
       # frontend acrescenta /api — que o proxy roteia para a API.
       API_URL: ${URL_PUBLICA}
+      # /otlp cai no handle padrão do Caddy e chega aqui; é o nginx deste container
+      # que põe o Authorization do coletor, para o token não viver no JavaScript.
+      OTEL_WEB: ${OTEL_WEB}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT}
+      OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS}
     depends_on:
       api:
         condition: service_healthy

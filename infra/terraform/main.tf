@@ -70,6 +70,9 @@ locals {
     dominio          = var.dominio
     duckdns_sub      = var.duckdns_subdominio
     duckdns_token    = var.duckdns_token
+    otel_endpoint    = var.otel_endpoint
+    otel_token       = var.otel_token
+    otel_ambiente    = var.otel_ambiente
   })
 
   etiquetas = {

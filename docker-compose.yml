@@ -34,6 +34,12 @@ services:
       DOCS_ABERTOS: ${DOCS_ABERTOS}
       TZ_APLICACAO: ${TZ_APLICACAO}
       INTEGRACAO_ESTOQUE_EXTERNO: ${INTEGRACAO_ESTOQUE_EXTERNO}
+      # Lidas pelo SDK do OpenTelemetry. Endpoint vazio desliga a instrumentação.
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT}
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL}
+      OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME}
+      OTEL_RESOURCE_ATTRIBUTES: ${OTEL_RESOURCE_ATTRIBUTES}
     ports: ["${PORTA_API}:5000"]
     depends_on:
       migracoes:
@@ -46,6 +52,11 @@ services:
     environment:
       API_URL: ${API_URL}
       TZ_APLICACAO: ${TZ_APLICACAO}
+      # O nginx do container repassa /otlp para o coletor pondo o Authorization —
+      # o token nunca chega ao navegador. OTEL_WEB=false desliga a telemetria do front.
+      OTEL_WEB: ${OTEL_WEB}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT}
+      OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS}
     ports: ["3000:3000"]
     depends_on: [api]
 

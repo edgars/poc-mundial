@@ -42,3 +42,15 @@ tag_imagens = "0.1.0"
 imagem_sqlserver = "mcr.microsoft.com/mssql/server:2022-latest"
 
 modo_demo = true
+
+# --- Observabilidade (OpenTelemetry → SigNoz) -------------------------------
+# Base do coletor, SEM o /v1/... no fim. Vazio desliga a telemetria da máquina
+# inteira — API e navegador — e a aplicação sobe igual.
+otel_endpoint = "https://SEU-COLETOR-OTLP"
+
+# Bearer do coletor. Vai para /opt/mundial/.env e para o terraform.tfstate;
+# os dois estão fora do git.
+otel_token = ""
+
+# Separa esta máquina do compose local na tela do SigNoz.
+otel_ambiente = "poc-vm"

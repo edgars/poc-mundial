@@ -22,6 +22,9 @@ var validadeSessao = TimeSpan.FromMinutes(
 // Spec OpenAPI e Swagger UI. Ligados por padrão na POC; em produção basta DOCS_ABERTOS=false.
 var docsAbertos = Environment.GetEnvironmentVariable("DOCS_ABERTOS")?.ToLowerInvariant() != "false";
 
+// NFR-15: traces, métricas e logs em OTLP. Sem OTEL_EXPORTER_OTLP_ENDPOINT, não faz nada.
+builder.AdicionarTelemetria();
+
 builder.Services.AddSingleton(new FabricaConexao(conexao));
 builder.Services.AddSingleton<IRelogio, Relogio>();
 builder.Services.AddSingleton<IHashSenha, HashSenha>();
@@ -110,6 +113,10 @@ IResult Problema(ResultadoRegra r, int status = StatusCodes.Status422Unprocessab
     };
     if (r.Chave is not null) pd.Extensions["ruleKey"] = r.Chave;
     pd.Extensions["tipo"] = r.Tipo.ToString();
+    // A mesma chave de regra que vai no corpo vai no span: no SigNoz dá para perguntar
+    // "quantas vezes a RK-xxxx recusou hoje" sem abrir log nenhum.
+    Telemetria.Marcar("regra.chave", r.Chave);
+    Telemetria.Marcar("regra.tipo", r.Tipo.ToString());
     return Results.Problem(pd);
 }
 
@@ -195,7 +202,13 @@ app.MapPost("/api/conferencia/leituras",
     if (doc is null) return Results.NotFound();
     // A oferta de cadastrar depende da permissão real, lida do token — não do que o cliente afirma.
     var podeIncluir = quem.HasClaim("perm", Seguranca.ClaimPermissao("estoq", Operacao.Incluir));
+    using var atividade = Telemetria.Fonte.StartActivity("ResolverLeitura");
+    atividade?.SetTag("conferencia.documento", documento);
     var leitura = await resolver.Executar(doc, pedido.Codigo, podeIncluir);
+    // O estado da leitura (aceito/recusado/ambiguo) é a métrica que o armazém sente: bipagem
+    // que não resolve é fila parada na doca.
+    atividade?.SetTag("leitura.estado", leitura.Estado);
+    atividade?.SetTag("regra.chave", leitura.Chave);
     return Results.Ok(leitura);
 }).RequireAuthorization("conferenci:consultar")
   .WithTags("Conferência").WithSummary("Resolve um código lido (EAN/DUN-14) contra os itens do documento.");
@@ -206,6 +219,10 @@ app.MapPost("/api/conferencia/lancamentos",
 {
     var (doc, _) = await abrir.Executar(documento);
     if (doc is null) return Results.NotFound();
+    using var atividade = Telemetria.Fonte.StartActivity("LancarQuantidade");
+    atividade?.SetTag("conferencia.documento", documento);
+    atividade?.SetTag("item.codigo", pedido.Codigo);
+    atividade?.SetTag("item.quantidade", (double)pedido.Quantidade);
     var r = await lancar.Executar(doc, pedido.Codigo, pedido.Quantidade, quem.Matricula(), pedido.Confirmado, pedido.Versao);
     if (!r.Passou) return Problema(r);
     var (atualizado, resultado) = await abrir.Executar(documento);
@@ -232,6 +249,9 @@ app.MapPost("/api/conferencia/fechamento",
 {
     var (doc, _) = await abrir.Executar(documento);
     if (doc is null) return Results.NotFound();
+    using var atividade = Telemetria.Fonte.StartActivity("FinalizarDocumento");
+    atividade?.SetTag("conferencia.documento", documento);
+    atividade?.SetTag("conferencia.divergencia", doc.TemDivergencia);
     var r = await finalizar.Executar(doc, quem.Matricula(), pedido.Confirmado);
     if (!r.Passou) return Problema(r);
     var (atualizado, resultado) = await abrir.Executar(documento);

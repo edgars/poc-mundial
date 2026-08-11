@@ -160,6 +160,16 @@ runcmd:
     MODO_DEMO=${modo_demo}
     DOCS_ABERTOS=true
     INTEGRACAO_ESTOQUE_EXTERNO=false
+
+    # Observabilidade (OpenTelemetry → SigNoz). Endpoint vazio desliga tudo.
+    # O navegador nunca vê o token: posta em /otlp na própria origem e o nginx
+    # do container web é quem põe o Authorization.
+    OTEL_EXPORTER_OTLP_ENDPOINT=${otel_endpoint}
+    OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+    OTEL_EXPORTER_OTLP_HEADERS=Authorization=Bearer ${otel_token}
+    OTEL_SERVICE_NAME=mundial-api
+    OTEL_RESOURCE_ATTRIBUTES=deployment.environment=${otel_ambiente}
+    OTEL_WEB=${otel_endpoint != "" ? "true" : "false"}
     EOF
       chmod 600 /opt/mundial/.env
       chown root:root /opt/mundial/.env
