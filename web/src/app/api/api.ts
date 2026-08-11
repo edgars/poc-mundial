@@ -16,6 +16,8 @@ export interface ItemConf {
   codigo: string; descricao?: string; dun14?: string; itNf?: number;
   qtdNf: number; qtdRec: number; divergencia?: number;
   temDivergencia: boolean; pendencia: boolean; situacao: string;
+  /** AD-17: a versão lida volta no lançamento, para o servidor detectar escrita concorrente. */
+  versao?: string;
 }
 export interface DocumentoConf {
   documento: string; chave: string; doca?: number; fornecedor?: string;
@@ -70,10 +72,11 @@ export class Api {
       `${base()}/api/conferencia/leituras?documento=${encodeURIComponent(doc)}`, { codigo }));
   }
 
-  lancar(doc: string, codigo: string, quantidade: number, matricula: string, confirmado: boolean) {
+  lancar(doc: string, codigo: string, quantidade: number, matricula: string,
+         confirmado: boolean, versao?: string) {
     return firstValueFrom(this.http.post<DocumentoConf>(
       `${base()}/api/conferencia/lancamentos?documento=${encodeURIComponent(doc)}`,
-      { codigo, quantidade, matricula, confirmado }));
+      { codigo, quantidade, matricula, confirmado, versao }));
   }
 
   fechar(doc: string, matricula: string, confirmado: boolean) {

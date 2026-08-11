@@ -14,7 +14,7 @@ public sealed class DocumentoRepositorio(FabricaConexao fabrica, IRelogio relogi
             SELECT cf.filial, cf.orig_des, cf.tipo_doc, cf.SERIE, cf.numero, cf.codigo,
                    cf.dun14, cf.itnf, cf.QTD_NF, cf.QTD_REC, cf.QTD_UNID_NF, cf.QTD_UNID_REC,
                    cf.matr_conf, cf.matr_fec, cf.dt_hora, cf.fechado, cf.pendencia, cf.situacao,
-                   cf.doca, cf.acesso, cf.codfor, cf.data_mov, fo.descri AS fornecedor, es.descri AS produto
+                   cf.doca, cf.acesso, cf.codfor, cf.data_mov, cf.versao, fo.descri AS fornecedor, es.descri AS produto
             FROM dbo.conferencia cf
             LEFT JOIN dbo.forne fo ON RTRIM(fo.codfor) = RTRIM(cf.codfor)
             LEFT JOIN dbo.estoq es ON RTRIM(es.codigo) = RTRIM(cf.codigo)
@@ -45,7 +45,7 @@ public sealed class DocumentoRepositorio(FabricaConexao fabrica, IRelogio relogi
                 (decimal?)l.QTD_NF ?? 0, (decimal?)l.QTD_REC ?? 0,
                 (decimal?)l.QTD_UNID_NF ?? 0, (decimal?)l.QTD_UNID_REC ?? 0,
                 (bool?)l.pendencia ?? false, ((string?)l.situacao)?.FirstOrDefault() ?? Situacao.Aguardando,
-                ((string?)l.produto)?.Trim()));
+                ((string?)l.produto)?.Trim(), (byte[]?)l.versao));
 
         return doc;
     }
@@ -115,22 +115,29 @@ public sealed class DocumentoRepositorio(FabricaConexao fabrica, IRelogio relogi
             new { busca = f.Busca });
     }
 
-    public async Task GravarLancamento(ItemConferencia item, CancellationToken ct = default)
+    /// <summary>
+    /// AD-17: concorrência otimista. O UPDATE só grava se a linha ainda estiver na versão que este
+    /// operador leu. Zero linhas afetadas significa que outra pessoa gravou no meio.
+    /// </summary>
+    public async Task<bool> GravarLancamento(ItemConferencia item, CancellationToken ct = default)
     {
         using var c = fabrica.Abrir();
-        await c.ExecuteAsync(@"
+        var afetadas = await c.ExecuteAsync(@"
             UPDATE dbo.conferencia
                SET QTD_REC = @qtd, QTD_UNID_REC = @qtdUnid, pendencia = @pend,
                    situacao = @sit, data_conf = @agora
              WHERE RTRIM(filial) = @filial AND RTRIM(orig_des) = @orig AND RTRIM(tipo_doc) = @tipo
-               AND RTRIM(SERIE) = @serie AND RTRIM(numero) = @numero AND RTRIM(codigo) = @codigo",
+               AND RTRIM(SERIE) = @serie AND RTRIM(numero) = @numero AND RTRIM(codigo) = @codigo
+               AND (@versao IS NULL OR versao = @versao)",
             new
             {
                 qtd = item.QtdRec, qtdUnid = item.QtdUnidRec, pend = item.Pendencia,
                 sit = item.SituacaoAtual.ToString(), agora = relogio.AgoraUtc,
                 filial = item.Documento.Filial, orig = item.Documento.OrigDes, tipo = item.Documento.TipoDoc,
-                serie = item.Documento.Serie, numero = item.Documento.Numero, codigo = item.Codigo.Trim()
+                serie = item.Documento.Serie, numero = item.Documento.Numero, codigo = item.Codigo.Trim(),
+                versao = item.Versao
             });
+        return afetadas > 0;
     }
 
     /// <summary>AD-10: fecha todas as linhas do documento em transação única.</summary>

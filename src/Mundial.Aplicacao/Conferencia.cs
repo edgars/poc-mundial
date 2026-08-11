@@ -89,7 +89,7 @@ public sealed class ResolverLeitura(IProdutoConsulta produtos)
 public sealed class LancarQuantidade(IDocumentoRepositorio documentos, IAuditoria auditoria)
 {
     public async Task<ResultadoRegra> Executar(Documento documento, string codigo, decimal quantidade,
-        string matricula, bool confirmado, CancellationToken ct = default)
+        string matricula, bool confirmado, string? versaoLida = null, CancellationToken ct = default)
     {
         if (documento.Fechado)
             return ResultadoRegra.Recusa("RK-69b41cd017dd", "Este Documento já foi conferido!");
@@ -102,10 +102,18 @@ public sealed class LancarQuantidade(IDocumentoRepositorio documentos, IAuditori
         var aviso = item.AvaliarLancamento();
         if (!aviso.Passou && !confirmado) return aviso;
 
+        // O cliente devolve a versão que viu; sem ela, grava sem checagem (compatível com curl).
+        if (!string.IsNullOrEmpty(versaoLida)) item.Versao = Convert.FromBase64String(versaoLida);
+
         var anterior = item.QtdRec;
-        item.Lancar(quantidade, quantidade * (documento.Itens.Count > 0 ? 1 : 1));
+        item.Lancar(quantidade, quantidade);
         documento.RegistrarConferente(matricula);
-        await documentos.GravarLancamento(item, ct);
+
+        // AD-17: se a linha mudou desde a leitura, outra pessoa gravou — não sobrescreve em silêncio.
+        if (!await documentos.GravarLancamento(item, ct))
+            return ResultadoRegra.Conflita(
+                "Outro operador lançou este item enquanto você trabalhava. Recarregue e confira o valor atual.");
+
         await auditoria.Registrar(matricula, "conferencia",
             $"{documento.Chave}/{item.Codigo.Trim()}",
             $"QTD_REC = {anterior:0.###}", $"QTD_REC = {quantidade:0.###}", ct);
@@ -127,7 +135,9 @@ public sealed class LancarQuantidade(IDocumentoRepositorio documentos, IAuditori
             string.Equals(i.Codigo.Trim(), codigo.Trim(), StringComparison.OrdinalIgnoreCase));
         var anterior = item.QtdRec;
         item.LimparLancamento();
-        await documentos.GravarLancamento(item, ct);
+        if (!await documentos.GravarLancamento(item, ct))
+            return ResultadoRegra.Conflita(
+                "Outro operador alterou este item enquanto você trabalhava. Recarregue e confira o valor atual.");
         await auditoria.Registrar(matricula, "conferencia",
             $"{documento.Chave}/{item.Codigo.Trim()}", $"QTD_REC = {anterior:0.###}", "Registro Excluido", ct);
         return ResultadoRegra.Ok;

@@ -48,10 +48,16 @@ app.UseCors();
 // --- AD-11: contrato de erro RFC 9457 com extensão ruleKey ---
 IResult Problema(ResultadoRegra r, int status = StatusCodes.Status422UnprocessableEntity)
 {
+    if (r.Tipo == TipoResultado.Conflito) status = StatusCodes.Status409Conflict;
     var pd = new Microsoft.AspNetCore.Mvc.ProblemDetails
     {
         Status = status,
-        Title = r.Tipo == TipoResultado.ExigeConfirmacao ? "Confirmação necessária" : "Operação recusada",
+        Title = r.Tipo switch
+        {
+            TipoResultado.ExigeConfirmacao => "Confirmação necessária",
+            TipoResultado.Conflito => "Conflito de gravação",
+            _ => "Operação recusada"
+        },
         Detail = r.Mensagem
     };
     if (r.Chave is not null) pd.Extensions["ruleKey"] = r.Chave;
@@ -114,7 +120,7 @@ app.MapPost("/api/conferencia/lancamentos",
 {
     var (doc, _) = await abrir.Executar(documento);
     if (doc is null) return Results.NotFound();
-    var r = await lancar.Executar(doc, pedido.Codigo, pedido.Quantidade, pedido.Matricula, pedido.Confirmado);
+    var r = await lancar.Executar(doc, pedido.Codigo, pedido.Quantidade, pedido.Matricula, pedido.Confirmado, pedido.Versao);
     if (!r.Passou) return Problema(r);
     var (atualizado, resultado) = await abrir.Executar(documento);
     return Results.Ok(Projetar(atualizado!, resultado));
@@ -264,11 +270,12 @@ static object Projetar(Documento doc, ResultadoRegra aviso) => new
         qtdNf = i.QtdNf, qtdRec = i.QtdRec,
         divergencia = i.QtdRec > 0 ? i.Divergencia : (decimal?)null,
         temDivergencia = i.TemDivergencia, pendencia = i.Pendencia,
-        situacao = i.SituacaoAtual.ToString()
+        situacao = i.SituacaoAtual.ToString(),
+        versao = i.Versao is null ? null : Convert.ToBase64String(i.Versao)
     })
 };
 
 record LeituraPedido(string Codigo, bool PodeIncluir = false);
-record LancamentoPedido(string Codigo, decimal Quantidade, string Matricula, bool Confirmado);
+record LancamentoPedido(string Codigo, decimal Quantidade, string Matricula, bool Confirmado, string? Versao = null);
 record FechamentoPedido(string Matricula, bool Confirmado);
 record CadastroPedido(string[] Dun, string Matricula, bool Confirmado);

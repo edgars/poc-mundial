@@ -22,7 +22,8 @@ public interface IDocumentoRepositorio
     Task<IReadOnlyList<ResumoDoca>> Docas(CancellationToken ct = default);
     Task<IReadOnlyList<ResumoDocumento>> Listar(FiltroListagem filtro, CancellationToken ct = default);
     Task<int> ContarListagem(FiltroListagem filtro, CancellationToken ct = default);
-    Task GravarLancamento(ItemConferencia item, CancellationToken ct = default);
+    /// <summary>Devolve false quando a linha mudou desde a leitura (AD-17).</summary>
+    Task<bool> GravarLancamento(ItemConferencia item, CancellationToken ct = default);
     Task Fechar(Documento documento, CancellationToken ct = default);
 }
 

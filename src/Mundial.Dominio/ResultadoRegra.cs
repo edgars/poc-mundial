@@ -8,7 +8,9 @@ public enum TipoResultado
     /// <summary>Bloqueia. O legado não deixava continuar.</summary>
     Recusado,
     /// <summary>O legado perguntava ao operador. AD-6: nunca bloqueia no servidor.</summary>
-    ExigeConfirmacao
+    ExigeConfirmacao,
+    /// <summary>AD-17: outra pessoa gravou o mesmo item enquanto este operador trabalhava.</summary>
+    Conflito
 }
 
 public sealed record ResultadoRegra(TipoResultado Tipo, string? Chave = null, string? Mensagem = null)
@@ -16,6 +18,7 @@ public sealed record ResultadoRegra(TipoResultado Tipo, string? Chave = null, st
     public static readonly ResultadoRegra Ok = new(TipoResultado.Aceito);
     public static ResultadoRegra Recusa(string chave, string mensagem) => new(TipoResultado.Recusado, chave, mensagem);
     public static ResultadoRegra Confirma(string chave, string mensagem) => new(TipoResultado.ExigeConfirmacao, chave, mensagem);
+    public static ResultadoRegra Conflita(string mensagem) => new(TipoResultado.Conflito, null, mensagem);
 
     public bool Passou => Tipo == TipoResultado.Aceito;
 }

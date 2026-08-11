@@ -41,8 +41,14 @@ file sealed class DocumentosFake(Documento? doc) : IDocumentoRepositorio
     public Task<IReadOnlyList<ResumoDocumento>> Listar(FiltroListagem f, CancellationToken ct = default)
         => Task.FromResult<IReadOnlyList<ResumoDocumento>>([]);
     public Task<int> ContarListagem(FiltroListagem f, CancellationToken ct = default) => Task.FromResult(0);
-    public Task GravarLancamento(ItemConferencia i, CancellationToken ct = default)
-    { Gravacoes.Add($"{i.Codigo}={i.QtdRec}"); return Task.CompletedTask; }
+    /// <summary>Quando ConflitaNaProxima é true, simula outra pessoa tendo gravado antes (AD-17).</summary>
+    public bool ConflitaNaProxima { get; set; }
+    public Task<bool> GravarLancamento(ItemConferencia i, CancellationToken ct = default)
+    {
+        if (ConflitaNaProxima) return Task.FromResult(false);
+        Gravacoes.Add($"{i.Codigo}={i.QtdRec}");
+        return Task.FromResult(true);
+    }
     public Task Fechar(Documento d, CancellationToken ct = default)
     { Gravacoes.Add("fechado"); return Task.CompletedTask; }
 }
@@ -407,5 +413,42 @@ public class RegrasOfertaCadastro
         var r = await new ResolverLeitura(new ProdutosFake()).Executar(Doc(), "7899999000123", podeIncluir: false);
         Assert.Equal("recusado", r.Estado);
         Assert.Null(r.OfertaCadastro);   // o item fica pendente e o operador segue (UJ-2)
+    }
+}
+
+public class RegrasConcorrencia
+{
+    private static Documento Doc()
+    {
+        var chave = new ChaveDocumento("00001", "00110", "NFE", "1", "000148372");
+        var d = new Documento { Chave = chave, NumeroExibido = "000148372/1" };
+        d.Itens.Add(ItemConferencia.Reidratar(chave, "04127", null, 1, 40, 0, 40, 0,
+            false, Situacao.Aguardando, null, [1, 2, 3]));
+        return d;
+    }
+
+    [Fact(DisplayName = "AD-17 · gravação concorrente devolve conflito, sem sobrescrever em silêncio")]
+    public async Task AD17_conflito_nao_sobrescreve()
+    {
+        var doc = Doc();
+        var repo = new DocumentosFake(doc) { ConflitaNaProxima = true };
+        var r = await new LancarQuantidade(repo, new AuditoriaFake())
+            .Executar(doc, "04127", 30, "04127", confirmado: true);
+
+        Assert.Equal(TipoResultado.Conflito, r.Tipo);
+        Assert.Contains("Outro operador", r.Mensagem);
+        Assert.Empty(repo.Gravacoes);
+    }
+
+    [Fact(DisplayName = "AD-17 · sem concorrência, a gravação segue normal")]
+    public async Task AD17_sem_conflito_grava()
+    {
+        var doc = Doc();
+        var repo = new DocumentosFake(doc);
+        var r = await new LancarQuantidade(repo, new AuditoriaFake())
+            .Executar(doc, "04127", 30, "04127", confirmado: true);
+
+        Assert.True(r.Passou);
+        Assert.Contains("04127=30", repo.Gravacoes);
     }
 }

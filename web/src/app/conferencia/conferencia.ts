@@ -84,6 +84,13 @@ type Confirmacao = { chave?: string; mensagem: string; acao: () => void } | null
       <button class="btn sec" style="padding:6px 12px;font-size:12px" (click)="voltar()">Docas</button>
     </div>
 
+    @if (conflito(); as c) {
+      <div class="fechado" style="background:var(--reject-wash);border-color:var(--reject);color:var(--reject)">
+        {{ c }}
+        <button class="btn sec" style="padding:3px 10px;font-size:12px;margin-left:10px"
+                (click)="conflito.set('')">Entendi</button>
+      </div>
+    }
     @if (doc()?.fechado) {
       <div class="fechado">
         Este Documento já foi conferido! Fechado por {{ doc()?.matrFec }} — somente leitura.
@@ -218,6 +225,7 @@ export class Conferencia {
   historico = signal<string[]>([]);
   ultimoLancado = signal('');
   flash = signal(false);
+  conflito = signal('');
   celebrando = signal(false);
   codigo = '';
   qtd: number | null = null;
@@ -276,9 +284,11 @@ export class Conferencia {
     const item = this.leitura()?.item;
     if (!item || this.qtd === null) return;
     try {
+      // AD-17: devolve a versão que esta tela leu, para o servidor recusar escrita concorrente
+      const versao = this.doc()?.itens.find(i => i.codigo === item.codigo)?.versao;
       const atualizado = await this.api.lancar(
         this.documento, item.codigo, Number(this.qtd),
-        this.api.sessao()!.matricula, confirmado);
+        this.api.sessao()!.matricula, confirmado, versao);
       this.doc.set(atualizado);
       this.ultimoLancado.set(item.codigo);
       this.historico.update(h => [`${item.codigo} · ${this.qtd} un`, ...h].slice(0, 2));
@@ -286,13 +296,20 @@ export class Conferencia {
       this.qtd = null;
       this.focar();
     } catch (e: any) {
-      // AD-6: confirmação é decisão do operador, chega como problem+json
       const detalhe = e?.error?.detail;
+      // AD-6: confirmação é decisão do operador, chega como problem+json
       if (e?.error?.tipo === 'ExigeConfirmacao' && detalhe) {
         this.confirmacao.set({
           chave: e.error.ruleKey, mensagem: detalhe,
           acao: () => { this.confirmacao.set(null); this.lancar(true); },
         });
+      } else if (e?.status === 409) {
+        // AD-17: outra pessoa gravou. Recarrega e mostra o estado atual — nunca força.
+        this.conflito.set(detalhe ?? 'Outro operador alterou este item.');
+        await this.carregar();
+        this.leitura.set(null);
+        this.qtd = null;
+        this.focar();
       }
     }
   }

@@ -11,6 +11,8 @@ public sealed class ItemConferencia
     public required string Codigo { get; init; }          // char(5), casa com estoq.CODIGO
     public string? Dun14 { get; set; }                    // char(14)
     public string? Descricao { get; set; }                // vem de estoq.descri, para exibição
+    /// <summary>AD-17: a versão lida, para o UPDATE detectar escrita concorrente.</summary>
+    public byte[]? Versao { get; set; }
     public decimal? ItNf { get; init; }                   // número do item na nota
     public decimal QtdNf { get; init; }
     public decimal QtdRec { get; private set; }
@@ -59,9 +61,9 @@ public sealed class ItemConferencia
     public static ItemConferencia Reidratar(
         ChaveDocumento doc, string codigo, string? dun14, decimal? itNf,
         decimal qtdNf, decimal qtdRec, decimal qtdUnidNf, decimal qtdUnidRec,
-        bool pendencia, char situacao, string? descricao = null) => new()
+        bool pendencia, char situacao, string? descricao = null, byte[]? versao = null) => new()
         {
-            Documento = doc, Codigo = codigo, Dun14 = dun14, ItNf = itNf, Descricao = descricao,
+            Documento = doc, Codigo = codigo, Dun14 = dun14, ItNf = itNf, Descricao = descricao, Versao = versao,
             QtdNf = qtdNf, QtdUnidNf = qtdUnidNf,
             QtdRec = qtdRec, QtdUnidRec = qtdUnidRec,
             Pendencia = pendencia, SituacaoAtual = situacao
