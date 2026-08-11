@@ -59,6 +59,11 @@ services:
       DOCS_ABERTOS: ${DOCS_ABERTOS}
       TZ_APLICACAO: ${TZ_APLICACAO}
       INTEGRACAO_ESTOQUE_EXTERNO: ${INTEGRACAO_ESTOQUE_EXTERNO}
+      # A API aborta na subida sem JWT_SEGREDO (Program.cs). Faltava aqui: o
+      # compose da raiz passa as duas, este não passava nenhuma, e a máquina
+      # ficou servindo uma imagem anterior ao guard até o pinning ser corrigido.
+      JWT_SEGREDO: ${JWT_SEGREDO}
+      SESSAO_MINUTOS: ${SESSAO_MINUTOS}
     depends_on:
       db:
         condition: service_healthy

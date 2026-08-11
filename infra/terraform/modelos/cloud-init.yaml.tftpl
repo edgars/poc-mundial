@@ -133,6 +133,9 @@ runcmd:
       URL_PUBLICA="$(cat /opt/mundial/url-publica.txt)"
       # A senha do SA precisa de maiúscula, minúscula, número e símbolo.
       SENHA_SA="$(openssl rand -base64 33 | tr -dc 'A-Za-z0-9')Aa1!"
+      # AD-7: chave de assinatura do JWT, com pelo menos 32 caracteres. Também
+      # nasce aqui e nunca passa pelo estado do Terraform.
+      SEGREDO_JWT="$(openssl rand -base64 48 | tr -dc 'A-Za-z0-9')"
       cat > /opt/mundial/.env <<EOF
     # Gerado na primeira inicialização da máquina. Não versionar.
     # Espelha o .env.example do repositório, com os valores desta máquina.
@@ -144,6 +147,10 @@ runcmd:
 
     SA_PASSWORD=$SENHA_SA
     CONNECTION_STRING=Server=db,1433;Database=sgm;User Id=sa;Password=$SENHA_SA;TrustServerCertificate=true;Encrypt=false
+
+    # Sem estas duas a API não sobe: Program.cs exige JWT_SEGREDO.
+    JWT_SEGREDO=$SEGREDO_JWT
+    SESSAO_MINUTOS=480
 
     # Mesma origem para o navegador e para o CORS da API.
     URL_PUBLICA=$URL_PUBLICA

@@ -69,6 +69,14 @@ jobs:
               echo "$corpo"; exit 1
             fi
 
+            # "falhou" é o desfecho quando não há versão anterior para onde
+            # voltar. Sem tratá-lo aqui, um estado já terminal ainda custaria
+            # os 20 minutos inteiros de espera antes de o job desistir.
+            if [ "$commit" = "$esperado" ] && [ "$situacao" = "falhou" ]; then
+              echo "::error::O deploy deste commit falhou e não havia versão anterior para restaurar."
+              echo "$corpo"; exit 1
+            fi
+
             sleep 20
           done
 
@@ -89,8 +97,25 @@ jobs:
           echo "  status=$codigo"
           [ "$codigo" = "200" ]
 
-          echo "dado semeado:"
-          curl -fsS --max-time 15 "${POC_URL}/api/docas" | jq -e 'length > 0' > /dev/null
+          # /api/docas exige "conferenci:consultar" (Program.cs:161). Buscá-la sem
+          # token só devolvia dado porque a máquina servia uma imagem anterior ao
+          # guard de autenticação; hoje responde 401 e este passo quebraria. Entrar
+          # de verdade cobre mais: prova que a JWT_SEGREDO está configurada — foi a
+          # falta dela que derrubou a POC — e que o dado semeado continua lá.
+          echo "recusa sem token:"
+          codigo=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${POC_URL}/api/docas")
+          echo "  status=$codigo"
+          [ "$codigo" = "401" ]
+
+          # Credenciais do andaime de demonstração (AD-21, MODO_DEMO), as mesmas
+          # do ROTEIRO-DE-TESTE.md. Não há segredo aqui para vazar.
+          echo "login e dado semeado:"
+          token=$(curl -fsS --max-time 15 -X POST "${POC_URL}/api/entrar" \
+            -H 'Content-Type: application/json' \
+            -d '{"matricula":"04127","senha":"mundial"}' | jq -r '.token')
+          [ -n "$token" ] && [ "$token" != "null" ]
+          curl -fsS --max-time 15 "${POC_URL}/api/docas" \
+            -H "Authorization: Bearer $token" | jq -e 'length > 0' > /dev/null
           echo "  docas respondendo"
 
       - name: Resumo

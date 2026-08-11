@@ -88,15 +88,27 @@ aponta_imagens "$ALVO"
 
 # O db fica de fora de propósito: não muda entre versões da aplicação, e
 # recriá-lo custaria a indisponibilidade que a demonstração não pode ter.
-docker compose --profile app up -d --force-recreate migracoes api web
+#
+# O `up` espera a api ficar saudável, porque o web depende dela por health.
+# Se a api entra em laço de reinício, o compose sai != 0 — e sob `set -e` isso
+# matava o script exatamente aqui, antes do health check e antes do rollback:
+# a POC ficava fora do ar e o deploy.json congelado em "implantando" para
+# sempre. Falhar a subida agora é um resultado a tratar, não um fim de script.
+subiu=1
+docker compose --profile app up -d --force-recreate migracoes api web || subiu=0
 
 # --------------------------------------------------------------- health check
-log "verificando saúde"
 saudavel=0
-for _ in $(seq 1 $TENTATIVAS_SAUDE); do
-  if curl -fsS --max-time 5 "$URL_LOCAL" >/dev/null 2>&1; then saudavel=1; break; fi
-  sleep 3
-done
+if [ "$subiu" = "0" ]; then
+  MOTIVO="o compose não subiu os containers deste commit"
+  log "$MOTIVO"
+else
+  log "verificando saúde"
+  for _ in $(seq 1 $TENTATIVAS_SAUDE); do
+    if curl -fsS --max-time 5 "$URL_LOCAL" >/dev/null 2>&1; then saudavel=1; break; fi
+    sleep 3
+  done
+fi
 
 # Responder não basta: a versão anterior também responde. Isto confere que os
 # containers no ar são exatamente as imagens recém-construídas — a verificação
@@ -130,9 +142,19 @@ fi
 log "DEPLOY FALHOU — voltando para ${SHA_ANTERIOR:0:7}"
 registra "revertendo" "$ALVO" "${MOTIVO:-health check nao respondeu}"
 
-aponta_imagens anterior
-docker compose --profile app up -d --force-recreate migracoes api web
-cd "$FONTE" && git reset --hard "$SHA_ANTERIOR" --quiet || true
-
-registra "revertido" "$SHA_ANTERIOR" "deploy de ${ALVO:0:7} falhou: ${MOTIVO:-health check}"
+# Sem a tag :anterior não há para onde voltar — é o caso do primeiro deploy da
+# máquina. Apontar o compose para uma imagem inexistente só trocaria uma queda
+# por outra, então o estado terminal é "falhou" e a máquina fica como está.
+if docker image inspect mundial-api:anterior >/dev/null 2>&1; then
+  aponta_imagens anterior
+  # Mesmo motivo da subida: se a volta também falhar, ainda queremos registrar
+  # o desfecho em vez de morrer no set -e e deixar o estado em "revertendo".
+  docker compose --profile app up -d --force-recreate migracoes api web ||
+    log "aviso: a volta para :anterior também falhou"
+  cd "$FONTE" && git reset --hard "$SHA_ANTERIOR" --quiet || true
+  registra "revertido" "$SHA_ANTERIOR" "deploy de ${ALVO:0:7} falhou: ${MOTIVO:-health check}"
+else
+  log "não há imagem :anterior para voltar"
+  registra "falhou" "$ALVO" "deploy falhou sem versão anterior: ${MOTIVO:-health check}"
+fi
 exit 1
