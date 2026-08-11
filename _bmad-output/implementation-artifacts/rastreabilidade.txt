@@ -1,0 +1,155 @@
+RASTREABILIDADE ruleKey -> teste  (AD-5, AD-20)
+==============================================================
+regras no UIR .............. 70
+implementadas no código .... 68
+com teste citando a chave .. 68
+
+  [ok       ] RK-046f5592ef5b  src/Mundial.Aplicacao/Autenticacao.cs
+                 └─ RK-046f5592ef5b · matrícula inexistente recusa com o texto do legado
+                 └─ RK-046f5592ef5b · credenciais corretas entram
+  [ok       ] RK-04c918661d8d  src/Mundial.Dominio/Obrigatorios.cs
+                 └─ RK-04c918661d8d · a flag consultar é obrigatória
+  [ok       ] RK-0811a89bc8e6  src/Mundial.Infraestrutura/Etiquetas/GeradorZpl.cs
+                 └─ RK-0811a89bc8e6 · a descrição sai em ^FO510,40 com a fonte do legado
+  [ok       ] RK-16bc1acd7b74  src/Mundial.Dominio/Obrigatorios.cs
+                 └─ RK-16bc1acd7b74 · situacao em branco não satisfaz a obrigatoriedade
+  [ok       ] RK-1b386e3870da  src/Mundial.Infraestrutura/Etiquetas/GeradorZpl.cs
+                 └─ RK-1b386e3870da · o código legível sai em ^FO110,335
+  [ok       ] RK-1d4194439839  src/Mundial.Dominio/Fornecedor.cs
+                 └─ obrigatórios de forne · cada campo ausente acusa a sua própria chave [RK-1d4194439839]
+  [ok       ] RK-21ac9f1bddea  src/Mundial.Dominio/Produto.cs
+                 └─ RK-21ac9f1bddea · exclusão no terceiro slot também confirma
+  [ok       ] RK-25721748a2b1  src/Mundial.Infraestrutura/Etiquetas/GeradorZpl.cs
+                 └─ RK-25721748a2b1 · EAN-13 usa a posição ^FO210,270
+  [ok       ] RK-2976e3756f6d  src/Mundial.Aplicacao/Cadastro.cs
+                 └─ RK-2976e3756f6d · código que já pertence a outro produto é recusado, com o nome dele
+  [ok       ] RK-2b3c11b27fef  src/Mundial.Infraestrutura/Etiquetas/GeradorZpl.cs
+                 └─ RK-2b3c11b27fef · embalagem e quantidade saem em ^FO420,360
+  [ok       ] RK-2c78478f0b97  src/Mundial.Dominio/Produto.cs
+                 └─ RK-2c78478f0b97 · apagar slot que já estava vazio não pergunta nada
+  [ok       ] RK-2ce1876d83ad  src/Mundial.Dominio/Fornecedor.cs
+                 └─ obrigatórios de forne · cada campo ausente acusa a sua própria chave [RK-2ce1876d83ad]
+  [ok       ] RK-305af19071c6  src/Mundial.Dominio/Produto.cs
+                 └─ RK-305af19071c6 · exclusão no segundo slot também confirma
+  [ok       ] RK-353ee013c009  src/Mundial.Dominio/Fornecedor.cs
+                 └─ obrigatórios de forne · cada campo ausente acusa a sua própria chave [RK-353ee013c009]
+  [ok       ] RK-37afeda868c2  src/Mundial.Dominio/Fornecedor.cs
+                 └─ obrigatórios de forne · cada campo ausente acusa a sua própria chave [RK-37afeda868c2]
+  [ok       ] RK-3b8ef53b6cf2  src/Mundial.Dominio/Produto.cs
+                 └─ RK-3b8ef53b6cf2 · EAN que não pertence ao produto é recusado
+                 └─ RK-3b8ef53b6cf2 · EAN do próprio produto é aceito
+  [ok       ] RK-3ff169d79617  src/Mundial.Infraestrutura/Etiquetas/GeradorZpl.cs
+                 └─ RK-3ff169d79617 · DUN-14 usa a posição ^FO220,270
+  [ok       ] RK-41493150036e  src/Mundial.Dominio/Produto.cs
+                 └─ RK-41493150036e · duplicidade é avaliada nos três slots
+  [ok       ] RK-45e526801fea  src/Mundial.Dominio/Documento.cs
+                 └─ RK-45e526801fea · documento já lançado pede confirmação, não bloqueia
+  [ok       ] RK-4697ebd74678  src/Mundial.Dominio/Fornecedor.cs
+                 └─ obrigatórios de forne · cada campo ausente acusa a sua própria chave [RK-4697ebd74678]
+  [ok       ] RK-4ca8df36a760  src/Mundial.Dominio/Produto.cs
+                 └─ RK-4ca8df36a760 · código diferente dos outros dois slots é aceito
+  [ok       ] RK-58fefec22db6  src/Mundial.Aplicacao/Autenticacao.cs
+                 └─ RK-58fefec22db6 · senha e confirmação diferentes são recusadas
+                 └─ RK-58fefec22db6 · senha e confirmação iguais geram o hash
+  [ok       ] RK-5960908935ee  src/Mundial.Dominio/ItemConferencia.cs
+                 └─ RK-5960908935ee · item zerado aceita lançamento sem confirmação
+  [ok       ] RK-5a7aaaa8862d  src/Mundial.Aplicacao/Cadastro.cs
+                 └─ RK-5a7aaaa8862d · produto existente aceita um código novo
+  [ok       ] RK-5b2436bca3f0  src/Mundial.Dominio/Produto.cs
+                 └─ RK-5b2436bca3f0 · apagar um código preenchido pede confirmação
+  [ok       ] RK-6022cae899fa  src/Mundial.Dominio/Obrigatorios.cs
+                 └─ RK-6022cae899fa · a flag incluir é obrigatória
+  [ok       ] RK-69b41cd017dd  src/Mundial.Dominio/Documento.cs
+                 └─ RK-69b41cd017dd · documento fechado recusa abertura para edição
+  [ok       ] RK-6aff3b12acb2  src/Mundial.Dominio/Fornecedor.cs
+                 └─ obrigatórios de forne · cada campo ausente acusa a sua própria chave [RK-6aff3b12acb2]
+  [ok       ] RK-6fef4d31a290  src/Mundial.Aplicacao/Conferencia.cs
+                 └─ RK-6fef4d31a290 · código válido do documento resolve para um produto
+  [ok       ] RK-732bb9300bad  src/Mundial.Aplicacao/Conferencia.cs
+                 └─ RK-732bb9300bad · produto que existe mas não está neste documento é recusado
+  [ok       ] RK-75e2169fe930  src/Mundial.Dominio/Produto.cs
+                 └─ RK-75e2169fe930 · terceiro slot só com espaços também conta como vazio
+  [ok       ] RK-798f00f19690  src/Mundial.Aplicacao/Conferencia.cs
+                 └─ RK-798f00f19690 · código que não existe em produto nenhum é recusado
+  [ok       ] RK-8233e231d6fb  src/Mundial.Dominio/ItemConferencia.cs
+                 └─ RK-8233e231d6fb · item com quantidade lançada exige confirmação, com o valor na mensagem
+  [ok       ] RK-82c929f4e851  src/Mundial.Dominio/Obrigatorios.cs
+                 └─ RK-82c929f4e851 · peso_bruto_col é obrigatório na conferência
+  [ok       ] RK-854f2452216e  src/Mundial.Dominio/Fornecedor.cs
+                 └─ obrigatórios de forne · cada campo ausente acusa a sua própria chave [RK-854f2452216e]
+  [ok       ] RK-8ffd715ce9ad  src/Mundial.Dominio/Usuario.cs
+                 └─ RK-8ffd715ce9ad · nível abaixo de 3 não entra no sistema
+                 └─ RK-8ffd715ce9ad · nível 3 entra
+  [ok       ] RK-98835efbf746  src/Mundial.Dominio/Fornecedor.cs
+                 └─ obrigatórios de forne · cada campo ausente acusa a sua própria chave [RK-98835efbf746]
+  [ok       ] RK-99e9bfdcea75  src/Mundial.Dominio/Produto.cs
+                 └─ RK-99e9bfdcea75 · o mesmo código não pode repetir entre os três slots de embalagem
+  [ok       ] RK-9f4468b42859  src/Mundial.Dominio/Produto.cs
+                 └─ RK-9f4468b42859 · terceiro slot vazio é a transição barr_emb3 = ''
+  [ok       ] RK-9f92b8e2a3c0  src/Mundial.Dominio/Produto.cs
+                 └─ RK-9f92b8e2a3c0 · trocar o valor, sem esvaziar, não é exclusão
+  [ok       ] RK-a0bb1eeee55d  src/Mundial.Dominio/Produto.cs
+                 └─ RK-a0bb1eeee55d · comparação de duplicidade ignora caixa
+  [ok       ] RK-a7f3c0eb65c1  src/Mundial.Dominio/Documento.cs
+                 └─ RK-a7f3c0eb65c1 · fornecedor diferente pede confirmação
+  [ok       ] RK-ab467d52fa1f  src/Mundial.Aplicacao/Cadastro.cs
+                 └─ RK-ab467d52fa1f · a checagem de outro produto vale para o segundo slot
+  [ok       ] RK-ab62193a2b2d  src/Mundial.Dominio/Produto.cs
+                 └─ RK-ab62193a2b2d · slot vazio não dispara duplicidade
+  [ok       ] RK-ade9dd1661d1  src/Mundial.Dominio/Produto.cs
+                 └─ RK-ade9dd1661d1 · a confirmação de exclusão traz o texto literal do legado
+                 └─ RK-ade9dd1661d1 · apagar um código exige confirmação antes de gravar
+  [ok       ] RK-b382d85d0edc  src/Mundial.Infraestrutura/Etiquetas/GeradorZpl.cs
+                 └─ RK-b382d85d0edc · a etiqueta abre com ^XA
+  [ok       ] RK-b3e7fcc26f3e  src/Mundial.Dominio/Fornecedor.cs
+                 └─ RK-b3e7fcc26f3e · fornecedor completo não acusa falta nenhuma
+                 └─ obrigatórios de forne · cada campo ausente acusa a sua própria chave [RK-b3e7fcc26f3e]
+  [ok       ] RK-b5da8c743238  src/Mundial.Dominio/Fornecedor.cs
+                 └─ obrigatórios de forne · cada campo ausente acusa a sua própria chave [RK-b5da8c743238]
+  [ok       ] RK-bdfbdff6c821  src/Mundial.Aplicacao/Conferencia.cs
+                 └─ RK-bdfbdff6c821 · excluir lançamento pede confirmação antes de apagar
+  [ok       ] RK-be780ff12c0e  src/Mundial.Dominio/Obrigatorios.cs
+                 └─ RK-be780ff12c0e · a flag excluir é obrigatória
+  [ok       ] RK-c0fce5362f62  src/Mundial.Aplicacao/Conferencia.cs
+                 └─ RK-c0fce5362f62 · documento inexistente é recusado ao abrir
+  [ok       ] RK-c5a64175c9a1  src/Mundial.Dominio/Obrigatorios.cs
+                 └─ RK-c5a64175c9a1 · balanca é obrigatória na conferência
+  [ok       ] RK-cc8cfa3658d1  src/Mundial.Dominio/Documento.cs
+                 └─ RK-cc8cfa3658d1 · documento sem lançamento não avisa relançamento
+  [ok       ] RK-d1a55f1103db  src/Mundial.Dominio/Obrigatorios.cs
+                 └─ RK-d1a55f1103db · usuario.nome é obrigatório
+  [ok       ] RK-dab7d2033e2e  src/Mundial.Aplicacao/Conferencia.cs
+                 └─ RK-dab7d2033e2e · com permissão de inclusão, a recusa oferece cadastrar na hora
+                 └─ RK-dab7d2033e2e · sem permissão de inclusão, a oferta não aparece
+  [ok       ] RK-dfe2ca45ec1a  src/Mundial.Dominio/Produto.cs
+                 └─ RK-dfe2ca45ec1a · terceiro slot preenchido não está na transição
+  [ok       ] RK-e74f29d4f922  src/Mundial.Dominio/Fornecedor.cs
+                 └─ obrigatórios de forne · cada campo ausente acusa a sua própria chave [RK-e74f29d4f922]
+  [ok       ] RK-e84d750f340a  src/Mundial.Aplicacao/Cadastro.cs
+                 └─ RK-e84d750f340a · cadastrar em produto inexistente é recusado
+  [ok       ] RK-e8876989538a  src/Mundial.Infraestrutura/Etiquetas/GeradorZpl.cs
+                 └─ RK-e8876989538a · a etiqueta fecha com ^XZ
+  [ok       ] RK-ea5a22eaf219  src/Mundial.Dominio/Obrigatorios.cs
+                 └─ RK-ea5a22eaf219 · acesso.descri é obrigatório
+  [ok       ] RK-ef82abb7456c  src/Mundial.Dominio/Fornecedor.cs
+                 └─ obrigatórios de forne · cada campo ausente acusa a sua própria chave [RK-ef82abb7456c]
+  [ok       ] RK-f2ca891c315f  src/Mundial.Dominio/Fornecedor.cs
+                 └─ obrigatórios de forne · cada campo ausente acusa a sua própria chave [RK-f2ca891c315f]
+  [ok       ] RK-f3bda1fa3b77  src/Mundial.Aplicacao/Cadastro.cs
+                 └─ RK-f3bda1fa3b77 · a checagem de outro produto vale para o terceiro slot
+  [ok       ] RK-f8293cf9dbb3  src/Mundial.Aplicacao/Autenticacao.cs
+                 └─ RK-f8293cf9dbb3 · senha errada recusa, e não revela que a matrícula existe
+  [ok       ] RK-f9e0b12a76af  src/Mundial.Dominio/Produto.cs
+                 └─ RK-f9e0b12a76af · o próprio slot não conflita consigo mesmo
+  [ok       ] RK-fa1ca141cf21  src/Mundial.Dominio/Obrigatorios.cs
+                 └─ RK-fa1ca141cf21 · a flag alterar é obrigatória
+  [ok       ] RK-fa93a48fbecc  src/Mundial.Aplicacao/Conferencia.cs, src/Mundial.Dominio/Documento.cs
+                 └─ RK-fa93a48fbecc · finalizar sempre pede uma confirmação
+  [ok       ] RK-ff51aa26bf33  src/Mundial.Dominio/Documento.cs
+                 └─ RK-ff51aa26bf33 · documento aberto passa na avaliação de abertura
+
+2 regra(s) do UIR ainda sem implementação:
+  - RK-a709080069ea
+  - RK-d0605132c1f1
+
+Toda regra implementada tem teste citando a mesma chave.

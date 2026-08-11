@@ -1,0 +1,22 @@
+# Proxy reverso da POC. Tudo na mesma origem — sem CORS, um só lugar para o TLS.
+#
+# Endereço: ${endereco}
+# ${nota_tls}
+
+${endereco} {
+	encode zstd gzip
+
+	# Sem strip do prefixo: as rotas da API já são /api/<recurso> (AD-15).
+	handle /api/* {
+		reverse_proxy api:8080
+	}
+
+	handle {
+		reverse_proxy web:80
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

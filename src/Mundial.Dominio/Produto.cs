@@ -72,6 +72,16 @@ public sealed class Produto
     };
 
     /// <summary>
+    /// RK-9f4468b42859 / RK-75e2169fe930 / RK-dfe2ca45ec1a — no legado, esvaziar qualquer um dos
+    /// três slots dispara a transição `barr_emb3 = ''`. As três regras compartilham a condição
+    /// porque o formulário reavalia o terceiro campo a cada mudança nos outros dois.
+    /// </summary>
+    [RegraNegocio("RK-9f4468b42859", "Transicao de estado: barr_emb3 = ''")]
+    [RegraNegocio("RK-75e2169fe930", "Transicao de estado: barr_emb3 = ''")]
+    [RegraNegocio("RK-dfe2ca45ec1a", "Transicao de estado: barr_emb3 = ''")]
+    public bool TerceiroSlotVazio() => string.IsNullOrWhiteSpace(Dun[2]);
+
+    /// <summary>
     /// RK-3b8ef53b6cf2 — o EAN bipado precisa pertencer a este produto.
     /// Condição legada compara contra produto.codbarr, codbarr2 e codbarr3.
     /// </summary>

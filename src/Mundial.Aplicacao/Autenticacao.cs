@@ -5,6 +5,21 @@ namespace Mundial.Aplicacao;
 public sealed record PedidoLogin(string Matricula, string Senha);
 public sealed record UsuarioAutenticado(string Matricula, string Nome, IReadOnlyList<Acesso> Permissoes);
 
+/// <summary>
+/// RK-58fefec22db6 — o legado compara o campo de confirmação com o de senha e recusa quando
+/// divergem: `Thisform.senha3.Value#This.Value And !Empty(Thisform.senha3.Value)`.
+/// </summary>
+public sealed class DefinirSenha(IHashSenha hash)
+{
+    [RegraNegocio("RK-58fefec22db6", "Você deve Confirmar a senha")]
+    public (string? Hash, ResultadoRegra Resultado) Executar(string senha, string confirmacao)
+    {
+        if (string.IsNullOrEmpty(senha) || senha != confirmacao)
+            return (null, ResultadoRegra.Recusa("RK-58fefec22db6", "Você deve Confirmar a senha"));
+        return (hash.Gerar(senha), ResultadoRegra.Ok);
+    }
+}
+
 public sealed class Autenticar(IUsuarioRepositorio usuarios, IAcessoRepositorio acessos, IHashSenha hash)
 {
     /// <summary>

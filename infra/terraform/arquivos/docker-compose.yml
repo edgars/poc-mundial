@@ -1,0 +1,99 @@
+# Composição de produção da POC — Mundial · Conferência de Recebimento.
+#
+# Escrito na máquina pelo cloud-init. Valores vêm de /opt/mundial/.env.
+#
+#   docker compose up -d                 sobe apenas o banco
+#   docker compose --profile app up -d   sobe migrations, api, web e proxy
+#
+# O SQL Server nunca publica porta: 1433 só existe dentro da rede do compose.
+
+name: mundial
+
+services:
+
+  db:
+    image: ${IMAGEM_SQLSERVER}
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+      MSSQL_PID: Developer
+      TZ: ${TZ_APLICACAO}
+    volumes:
+      - dados-sql:/var/opt/mssql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -Q 'SELECT 1' >/dev/null 2>&1
+          || /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -Q 'SELECT 1' >/dev/null 2>&1
+          || bash -c 'echo > /dev/tcp/127.0.0.1/1433'
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+    restart: unless-stopped
+
+  # Roda uma vez, aplica os scripts DbUp e sai. Idempotente: script já
+  # aplicado não roda de novo. Seed nunca entra aqui (AD-21).
+  migrations:
+    image: ${IMAGEM_MIGRATIONS}
+    profiles: ["app"]
+    environment:
+      CONNECTION_STRING: ${CONNECTION_STRING}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    image: ${IMAGEM_API}
+    profiles: ["app"]
+    environment:
+      CONNECTION_STRING: ${CONNECTION_STRING}
+      JWT_ASSINATURA: ${JWT_ASSINATURA}
+      TZ_APLICACAO: ${TZ_APLICACAO}
+      MODO_DEMO: ${MODO_DEMO}
+      ASPNETCORE_URLS: http://+:8080
+    depends_on:
+      db:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+  web:
+    image: ${IMAGEM_WEB}
+    profiles: ["app"]
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Serve tudo na mesma origem: / vai para o web, /api vai para a api.
+  # Isso resolve o CORS e evita o erro clássico de apontar o navegador
+  # para http://api:8080, que só resolve dentro da rede do compose.
+  proxy:
+    image: caddy:2-alpine
+    profiles: ["app"]
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-dados:/data
+      - caddy-config:/config
+    depends_on:
+      - web
+      - api
+    restart: unless-stopped
+
+volumes:
+  dados-sql:
+  caddy-dados:
+  caddy-config:

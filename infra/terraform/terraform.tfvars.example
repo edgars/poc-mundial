@@ -1,0 +1,44 @@
+# Copie para terraform.tfvars e preencha. terraform.tfvars é ignorado pelo git.
+
+regiao = "sa-saopaulo"
+
+# Sua chave pública SSH. A privada nunca sai da sua máquina.
+chave_ssh_publica = "ssh-ed25519 AAAAC3Nza... edgar@skalena.com"
+
+# Seu IP com /32. Descubra com: curl -s https://ifconfig.me
+cidr_ssh = "203.0.113.10/32"
+
+# x86_64 obrigatório — a imagem do SQL Server 2022 só existe para linux/amd64.
+# S5.LARGE8 = 4 vCPU / 8 GB.
+tipo_instancia = "S5.LARGE8"
+
+# --- Endereço público -------------------------------------------------------
+# A Tencent não dá hostname de teste por instância como a Azure faz com
+# *.cloudapp.azure.com. Escolha um dos três. Precedência: dominio > duckdns > sslip.
+#
+# 1) Domínio próprio — melhor para demonstração com cliente.
+#    Crie o registro A apontando para o IP ANTES de rodar subir.sh.
+dominio = ""
+
+# 2) DuckDNS — grátis, e com HTTPS confiável: duckdns.org está na Public Suffix
+#    List, então o limite de emissão do Let's Encrypt é do seu subdomínio.
+#    Cadastre em https://www.duckdns.org e pegue o token.
+#    A máquina registra o próprio IP no boot e renova a cada 30 min.
+duckdns_subdominio = ""
+duckdns_token      = ""
+
+# 3) Nenhum dos dois: a máquina usa <ip>.sslip.io em HTTP puro, sem cadastro.
+#    Não tenta TLS de propósito — sslip.io não está na PSL e o limite do
+#    Let's Encrypt é compartilhado com o mundo inteiro, quase sempre esgotado.
+
+# Preencha quando as imagens existirem no seu TCR.
+registry    = ""
+tag_imagens = "0.1.0"
+
+# Espelhe a imagem no seu TCR para não depender do MCR no dia da apresentação:
+#   docker pull mcr.microsoft.com/mssql/server:2022-latest
+#   docker tag  mcr.microsoft.com/mssql/server:2022-latest <tcr>/mssql-server:2022
+#   docker push <tcr>/mssql-server:2022
+imagem_sqlserver = "mcr.microsoft.com/mssql/server:2022-latest"
+
+modo_demo = true

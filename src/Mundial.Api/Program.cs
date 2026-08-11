@@ -18,6 +18,9 @@ builder.Services.AddSingleton<IHashSenha, HashSenha>();
 builder.Services.AddScoped<IUsuarioRepositorio, UsuarioRepositorio>();
 builder.Services.AddScoped<IAcessoRepositorio, AcessoRepositorio>();
 builder.Services.AddScoped<IProdutoConsulta, ProdutoConsulta>();
+builder.Services.AddScoped<IProdutoRepositorio, ProdutoRepositorio>();
+builder.Services.AddScoped<CadastrarCodigos>();
+builder.Services.AddSingleton<Mundial.Infraestrutura.Etiquetas.GeradorZpl>();
 builder.Services.AddScoped<IDocumentoRepositorio, DocumentoRepositorio>();
 builder.Services.AddScoped<IAuditoria, Auditoria>();
 builder.Services.AddScoped<Autenticar>();
@@ -102,7 +105,7 @@ app.MapPost("/api/conferencia/leituras",
 {
     var (doc, _) = await abrir.Executar(documento);
     if (doc is null) return Results.NotFound();
-    var leitura = await resolver.Executar(doc, pedido.Codigo);
+    var leitura = await resolver.Executar(doc, pedido.Codigo, pedido.PodeIncluir);
     return Results.Ok(leitura);
 });
 
@@ -138,6 +141,44 @@ app.MapPost("/api/conferencia/fechamento",
     if (!r.Passou) return Problema(r);
     var (atualizado, resultado) = await abrir.Executar(documento);
     return Results.Ok(Projetar(atualizado!, resultado));
+});
+
+// --- cadastro de códigos DUN-14 (Épico 3) ---
+app.MapGet("/api/produtos/{codigo}", async (string codigo, IProdutoConsulta produtos) =>
+{
+    var p = await produtos.PorCodigo(codigo);
+    return p is null
+        ? Results.NotFound()
+        : Results.Ok(new
+        {
+            codigo = p.Codigo.Trim(), descricao = p.Descricao.Trim(),
+            embalagem = p.Embalagem, embalagemQtd = p.EmbalagemQtd,
+            ean = p.Ean, dun = p.Dun
+        });
+});
+
+app.MapPut("/api/produtos/{codigo}/codigos", async (string codigo, CadastroPedido pedido,
+    CadastrarCodigos cadastrar) =>
+{
+    var r = await cadastrar.Executar(
+        new PedidoCadastro(codigo, pedido.Dun, pedido.Confirmado), pedido.Matricula);
+    return r.Passou ? Results.Ok(new { gravado = true }) : Problema(r);
+});
+
+// --- etiqueta ZPL (Épico 3) ---
+app.MapGet("/api/produtos/{codigo}/etiqueta", async (string codigo, string? codigoBarras,
+    IProdutoConsulta produtos, Mundial.Infraestrutura.Etiquetas.GeradorZpl gerador) =>
+{
+    var p = await produtos.PorCodigo(codigo);
+    if (p is null) return Results.NotFound();
+    var cb = codigoBarras?.Trim()
+             ?? p.DunPreenchidos.FirstOrDefault()
+             ?? p.EanPreenchidos.FirstOrDefault();
+    if (string.IsNullOrWhiteSpace(cb))
+        return Results.Problem("Produto sem código de barras para imprimir.", statusCode: 422);
+    return Results.Ok(new { codigo = p.Codigo.Trim(), descricao = p.Descricao.Trim(),
+        embalagem = p.Embalagem, embalagemQtd = p.EmbalagemQtd, codigoBarras = cb,
+        zpl = gerador.Gerar(p, cb) });
 });
 
 // --- consultas (AD-15) ---
@@ -227,6 +268,7 @@ static object Projetar(Documento doc, ResultadoRegra aviso) => new
     })
 };
 
-record LeituraPedido(string Codigo);
+record LeituraPedido(string Codigo, bool PodeIncluir = false);
 record LancamentoPedido(string Codigo, decimal Quantidade, string Matricula, bool Confirmado);
 record FechamentoPedido(string Matricula, bool Confirmado);
+record CadastroPedido(string[] Dun, string Matricula, bool Confirmado);

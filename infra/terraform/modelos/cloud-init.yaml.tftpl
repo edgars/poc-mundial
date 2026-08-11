@@ -1,0 +1,153 @@
+#cloud-config
+# Preparação da máquina da POC — Mundial · Conferência de Recebimento.
+# Gerado pelo Terraform. Não edite na máquina: edite o modelo e reaplique.
+
+package_update: true
+package_upgrade: false
+
+packages:
+  - ca-certificates
+  - curl
+  - jq
+  - openssl
+
+write_files:
+  - path: /opt/mundial/docker-compose.yml
+    permissions: "0640"
+    owner: root:root
+    content: |
+      ${indent(6, compose_conteudo)}
+
+  - path: /opt/mundial/Caddyfile
+    permissions: "0640"
+    owner: root:root
+    content: |
+      ${indent(6, caddy_conteudo)}
+
+  - path: /opt/mundial/subir.sh
+    permissions: "0750"
+    owner: root:root
+    content: |
+      ${indent(6, subir_conteudo)}
+
+runcmd:
+  # --------------------------------------------------------------------------
+  # 1. Arquitetura. A imagem mcr.microsoft.com/mssql/server:2022-latest é
+  #    publicada apenas para linux/amd64 — não existe variante arm64. Numa CVM
+  #    ARM o sistema é Linux e mesmo assim o banco não sobe.
+  # --------------------------------------------------------------------------
+  - |
+    ARQ="$(uname -m)"
+    if [ "$ARQ" != "x86_64" ]; then
+      MSG="ARQUITETURA INCOMPATIVEL: a maquina e $ARQ. A imagem do SQL Server 2022 so existe para linux/amd64. Recrie a CVM com um tipo x86 (S5, S6 ou SA5)."
+      echo "$MSG" | tee /opt/mundial/ARQUITETURA-INCOMPATIVEL.txt
+      logger -t mundial-poc "$MSG"
+      exit 1
+    fi
+    echo "arquitetura ok: $ARQ" | tee /opt/mundial/arquitetura.txt
+
+  # --------------------------------------------------------------------------
+  # 2. Fuso do host e Docker Engine com o plugin compose v2.
+  # --------------------------------------------------------------------------
+  - timedatectl set-timezone ${fuso}
+  - |
+    if ! command -v docker >/dev/null 2>&1; then
+      curl -fsSL https://get.docker.com | sh
+    fi
+    systemctl enable --now docker
+
+  # --------------------------------------------------------------------------
+  # 3. Endereço público. A Tencent não dá hostname de teste por instância como
+  #    a Azure faz com *.cloudapp.azure.com — a CVM tem só IP. Três caminhos,
+  #    nesta precedência: domínio próprio > DuckDNS > sslip.io.
+  # --------------------------------------------------------------------------
+  - |
+    IP="$(curl -s --max-time 5 http://metadata.tencentyun.com/latest/meta-data/public-ipv4 || true)"
+    if [ -z "$IP" ]; then IP="$(curl -s --max-time 5 https://ifconfig.me || true)"; fi
+    echo "$IP" > /opt/mundial/ip-publico.txt
+
+    case "${modo_dns}" in
+      dominio)
+        ENDERECO="${dominio}"
+        ;;
+      duckdns)
+        # Registra o IP desta máquina. Sem o parâmetro ip= o DuckDNS usa o IP
+        # de origem da requisição, que é exatamente o que queremos.
+        curl -fsS "https://www.duckdns.org/update?domains=${duckdns_sub}&token=${duckdns_token}&ip=" \
+          -o /opt/mundial/duckdns-ultima-atualizacao.txt || true
+        ENDERECO="${duckdns_sub}.duckdns.org"
+
+        cat > /etc/systemd/system/duckdns.service <<'UNIT'
+    [Unit]
+    Description=Atualiza o registro DuckDNS da POC
+    After=network-online.target
+
+    [Service]
+    Type=oneshot
+    ExecStart=/usr/bin/curl -fsS "https://www.duckdns.org/update?domains=${duckdns_sub}&token=${duckdns_token}&ip="
+    UNIT
+
+        cat > /etc/systemd/system/duckdns.timer <<'UNIT'
+    [Unit]
+    Description=Renova o registro DuckDNS a cada 30 minutos
+
+    [Timer]
+    OnBootSec=2min
+    OnUnitActiveSec=30min
+
+    [Install]
+    WantedBy=timers.target
+    UNIT
+
+        chmod 640 /etc/systemd/system/duckdns.service
+        systemctl daemon-reload
+        systemctl enable --now duckdns.timer
+        ;;
+      *)
+        # sslip.io resolve <ip>.sslip.io para o próprio IP, sem cadastro.
+        # Servido em HTTP puro de propósito: sslip.io não está na Public Suffix
+        # List, então o limite de emissão do Let's Encrypt é compartilhado com
+        # o mundo inteiro e costuma estar esgotado. Tentar TLS aqui é falhar
+        # na hora da apresentação.
+        ENDERECO="http://$IP.sslip.io"
+        ;;
+    esac
+
+    sed -i "s|__ENDERECO__|$ENDERECO|g" /opt/mundial/Caddyfile
+    echo "$ENDERECO" > /opt/mundial/endereco.txt
+
+  # --------------------------------------------------------------------------
+  # 4. Segredos. Gerados aqui, na primeira inicialização — nunca passam pelo
+  #    estado do Terraform. Para lê-los depois: sudo cat /opt/mundial/.env
+  # --------------------------------------------------------------------------
+  - |
+    if [ ! -f /opt/mundial/.env ]; then
+      SENHA_SA="$(openssl rand -base64 33 | tr -dc 'A-Za-z0-9')Aa1!"
+      JWT="$(openssl rand -base64 64 | tr -dc 'A-Za-z0-9')"
+      cat > /opt/mundial/.env <<EOF
+    # Gerado na primeira inicialização da máquina. Não versionar.
+    TAG=${tag}
+    IMAGEM_SQLSERVER=${imagem_sqlserver}
+    IMAGEM_API=${imagem_api}
+    IMAGEM_WEB=${imagem_web}
+    IMAGEM_MIGRATIONS=${imagem_migrations}
+
+    MSSQL_SA_PASSWORD=$SENHA_SA
+    CONNECTION_STRING=Server=db,1433;Database=sgm;User Id=sa;Password=$SENHA_SA;TrustServerCertificate=True;Encrypt=True
+    JWT_ASSINATURA=$JWT
+
+    TZ_APLICACAO=${fuso}
+    MODO_DEMO=${modo_demo}
+    EOF
+      chmod 600 /opt/mundial/.env
+      chown root:root /opt/mundial/.env
+    fi
+
+  # --------------------------------------------------------------------------
+  # 5. Sobe o banco. A aplicação fica de fora até as imagens existirem no
+  #    registry: rode /opt/mundial/subir.sh depois do docker login.
+  # --------------------------------------------------------------------------
+  - cd /opt/mundial && docker compose pull db && docker compose up -d db
+  - date -Is > /opt/mundial/PROVISIONADO-EM
+
+final_message: "Máquina da POC pronta em $UPTIME s. Banco no ar; rode /opt/mundial/subir.sh para a aplicação."

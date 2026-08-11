@@ -11,7 +11,9 @@ public sealed record LeituraResultado(
     string? Chave,
     string? Mensagem,
     ItemResolvido? Item,
-    IReadOnlyList<string>? Candidatos);
+    IReadOnlyList<string>? Candidatos,
+    /// <summary>RK-dab7d2033e2e: a oferta só aparece para quem tem permissão de inclusão (FR-5).</summary>
+    string? OfertaCadastro = null);
 
 /// <summary>
 /// Abre o documento que o operador bipou e devolve os itens esperados.
@@ -44,15 +46,18 @@ public sealed class ResolverLeitura(IProdutoConsulta produtos)
 {
     [RegraNegocio("RK-6fef4d31a290", "Código Não cadastrado!")]
     [RegraNegocio("RK-798f00f19690", "Código Não cadastrado!")]
+    [RegraNegocio("RK-dab7d2033e2e", "Código Não cadastrado! Deseja Cadastrar agora?")]
     [RegraNegocio("RK-732bb9300bad", "Código Não cadastrado para")]
     public async Task<LeituraResultado> Executar(Documento documento, string codigoBipado,
-        CancellationToken ct = default)
+        bool podeIncluir = false, CancellationToken ct = default)
     {
         var codigo = codigoBipado.Trim();
         var achados = await produtos.PorCodigoDeBarras(codigo, ct);
 
         if (achados.Count == 0)
-            return new("recusado", "RK-798f00f19690", "Código Não cadastrado!", null, null);
+            // A oferta de cadastrar na hora é o RK-dab7d2033e2e, e só existe com permissão de inclusão.
+            return new("recusado", "RK-798f00f19690", "Código Não cadastrado!", null, null,
+                podeIncluir ? "Código Não cadastrado!\nDeseja Cadastrar agora?" : null);
 
         if (achados.Count > 1)
             return new("ambiguo", "RK-798f00f19690",

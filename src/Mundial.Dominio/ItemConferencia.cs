@@ -28,6 +28,7 @@ public sealed class ItemConferencia
     /// AD-17: o lançamento substitui; por isso a confirmação existe. Somar não seria destrutivo.
     /// </summary>
     [RegraNegocio("RK-8233e231d6fb", "Este Código já tem Qtde lançada (")]
+    [RegraNegocio("RK-5960908935ee", "Este Código já tem Qtde lançada (")]
     public ResultadoRegra AvaliarLancamento()
         => QtdRec > 0
             ? ResultadoRegra.Confirma("RK-8233e231d6fb",

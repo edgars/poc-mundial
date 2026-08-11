@@ -1,13 +1,16 @@
-# Instalação do BMAD por ferramenta — reproduzível com `npx bmad-method install`
-.claude/
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log
+# .terraform.lock.hcl deve ser versionado — fixa as versões do provider.
 
-# Build
-node_modules/
-bin/
-obj/
-dist/
-.angular/
-
-# Ambiente
+# Segredos e ambiente
 .env
-*.user
+!.env.example
+
+# Sistema
+.DS_Store
