@@ -174,7 +174,48 @@ inteira muda de modo.
 
 ---
 
-## Roteiro 5 · Dois operadores no mesmo documento
+## Roteiro 5 · Cadastro de códigos e etiqueta
+
+Como **04310** (Rosana — o Cleber vê os campos travados), clique em **Códigos** no topo do painel,
+ou vá direto a `http://localhost:3000/codigos?codigo=04127`.
+
+A tela mostra o produto, os três slots de DUN-14, e ao lado a **prévia da etiqueta** com o ZPL cru.
+
+| Digite no **Barr Emb 2** e clique em Gravar | O que acontece |
+| --- | --- |
+| `17891234500010` | Recusa: *"Código já cadastrado para o Produto 04982 — CERVEJA PILSEN LATA 350ML"*. O erro aparece **no campo**, não num resumo no topo. |
+| `17891234567894` | Recusa: *"Este Código já esta cadastrado"* — é o mesmo do slot 1, dentro do próprio produto. |
+| `17891234599999` | Grava. A etiqueta ao lado continua com o código principal. |
+| Apague o **Barr Emb 1** e grave | Pergunta *"Tem certeza que deseja excluir este código?"* antes de apagar. |
+
+Como **04127** (Cleber), a mesma tela abre em leitura: os campos ficam desabilitados e um aviso
+explica que a matrícula não tem permissão de alteração em `estoq`.
+
+---
+
+## Roteiro 6 · Consultas do supervisor
+
+Como **04310**, clique em **Consultas**. Três abas — e o Cleber só vê a primeira, porque não tem
+permissão em `forne` nem em `log_even`.
+
+| Aba | O que conferir |
+| --- | --- |
+| **Conferências** | A lista com situação e divergência. `↑` `↓` navegam, `Enter` abre, `/` foca a busca. A linha em foco ganha filete ciano à esquerda — não fundo, que brigaria com o âmbar da divergência. |
+| **Fornecedores** | Os três fornecedores, com o resultado das treze regras de obrigatoriedade rodando sobre o dado gravado. |
+| **Auditoria** | Quem alterou o quê, quando, e o valor antes e depois — no formato recuperado da função `reg_log` do FoxPro. Horário no fuso do armazém. |
+
+---
+
+## Roteiro 7 · Reset da demonstração
+
+No painel de docas, o botão **Resetar demo** devolve tudo ao estado semeado. Use entre uma
+apresentação e outra: a segunda fica idêntica à primeira.
+
+O endpoint exige autenticação e permissão de alteração — apagar o banco não fica aberto.
+
+---
+
+## Roteiro 8 · Dois operadores no mesmo documento
 
 Precisa de duas janelas — uma normal e uma anônima, para as sessões não se misturarem.
 
@@ -301,16 +342,14 @@ Para conferir uma regra específica contra a fonte original, use o MCP do RNC:
 
 Para não gastar seu tempo procurando:
 
-| Não existe | Onde está a regra |
+| Não existe | Situação |
 | --- | --- |
-| Tela de cadastro de códigos DUN-14 | API e testes; mock em `mockups/superficies-restantes.html` |
-| Tela de prévia da etiqueta | API e testes; mesmo mock |
-| Tela de consultas do supervisor | API `/api/conferencias`; mesmo mock |
-| Tela de auditoria | grava certo; só se lê pelo banco |
-| Botão de reset da demonstração | apague as tabelas e reinicie a API |
-| Expiração de sessão por inatividade | especificada, não implementada |
-| Cadastro de fornecedor | fora do escopo do POC por decisão; as 13 regras estão testadas |
-| Envio para impressora física | fora do escopo; o ZPL é gerado e conferível |
+| Cadastro de fornecedor | fora do escopo do POC por decisão; as 13 regras rodam na consulta |
+| Envio para impressora física | fora do escopo; o ZPL é gerado e conferível na tela |
+| Migração do dado histórico | fora do escopo da Fase 1 |
+| Integração ODBC com o ERP | `logicOpaque` no UIR — a lógica não foi recuperada |
+| Testes de integração contra banco | os 102 testes usam fakes; a verificação contra o banco foi manual |
+| Auditoria de NFR | os 500 ms do NFR-1 nunca foram medidos |
 
 ---
 

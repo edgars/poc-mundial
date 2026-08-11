@@ -88,5 +88,35 @@
     "arquivo": "18-somente-leitura.png",
     "titulo": "Somente leitura",
     "legenda": "Documento da doca 4, fechado desde o seed. Somente leitura, com quem fechou registrado no topo."
+  },
+  {
+    "arquivo": "19-cadastro-de-codigos.png",
+    "titulo": "Cadastro de codigos",
+    "legenda": "Os três slots de DUN-14 do produto, com a prévia da etiqueta ao lado e o ZPL cru para inspeção. Rosana pode alterar; o Cleber veria os campos travados."
+  },
+  {
+    "arquivo": "20-codigo-de-outro-produto.png",
+    "titulo": "Codigo de outro produto",
+    "legenda": "Código que já pertence a outro produto. O erro aparece NO CAMPO que o causou, não num resumo no topo — as regras são de duplicidade cruzada entre os três slots, então saber qual conflita é a informação."
+  },
+  {
+    "arquivo": "21-codigo-repetido-no-produto.png",
+    "titulo": "Codigo repetido no produto",
+    "legenda": "Mesmo código em dois slots do mesmo produto. Outra regra, outro campo, mesma disciplina de localização do erro."
+  },
+  {
+    "arquivo": "22-consulta-de-conferencias.png",
+    "titulo": "Consulta de conferencias",
+    "legenda": "A TabelaDensa do supervisor: densidade alta, separação por borda, sem cartão decorativo. Setas navegam, Enter abre, / vai para a busca."
+  },
+  {
+    "arquivo": "23-consulta-de-fornecedores.png",
+    "titulo": "Consulta de fornecedores",
+    "legenda": "Fornecedores com o resultado das treze regras de obrigatoriedade rodando sobre o dado gravado — a lacuna fica visível em vez de silenciosa."
+  },
+  {
+    "arquivo": "24-trilha-de-auditoria.png",
+    "titulo": "Trilha de auditoria",
+    "legenda": "A trilha no formato do legado, recuperado da função reg_log do FoxPro: quem, quando, qual tabela, e o valor antes e depois. Só a supervisão enxerga."
   }
 ]

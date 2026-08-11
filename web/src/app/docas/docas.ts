@@ -34,6 +34,18 @@ import { Api, ResumoDoca } from '../api/api';
     <div class="barra">
       <b>Docas</b><span>Recebimento</span>
       <span class="pt">{{ api.sessao()?.nome }} · atualiza sozinho</span>
+      @if (api.pode('estoq','consultar')) {
+        <button class="btn sec" style="padding:6px 12px;font-size:12px"
+                (click)="ir('/codigos')">Códigos</button>
+      }
+      <button class="btn sec" style="padding:6px 12px;font-size:12px"
+              (click)="ir('/consultas')">Consultas</button>
+      @if (podeResetar()) {
+        <button class="btn sec" style="padding:6px 12px;font-size:12px"
+                (click)="resetar()" [disabled]="resetando()">
+          {{ resetando() ? 'Resetando…' : 'Resetar demo' }}
+        </button>
+      }
       <button class="btn sec" style="padding:6px 12px;font-size:12px" (click)="sair()">Sair</button>
     </div>
 
@@ -73,6 +85,7 @@ export class Docas implements OnDestroy {
   private router = inject(Router);
   docas = signal<ResumoDoca[]>([]);
   private timer?: ReturnType<typeof setInterval>;
+  resetando = signal(false);
 
   constructor() {
     if (!this.api.sessao() && !this.api.restaurar()) { this.router.navigate(['/entrar']); }
@@ -83,7 +96,7 @@ export class Docas implements OnDestroy {
 
   ngOnDestroy() { clearInterval(this.timer); }
 
-  private async carregar() {
+  async carregar() {
     try { this.docas.set(await this.api.docas()); } catch { /* mantém o último estado */ }
   }
 
@@ -118,6 +131,18 @@ export class Docas implements OnDestroy {
 
   abrir(d: ResumoDoca) {
     if (d.documento) this.router.navigate(['/conferencia', d.documento]);
+  }
+
+  ir(rota: string) { this.router.navigate([rota]); }
+
+  /** Story 5.3 / FR-51: só existe com MODO_DEMO ligado, e só para quem pode alterar. */
+  podeResetar() { return this.api.pode('conferencia', 'alterar'); }
+
+  async resetar() {
+    this.resetando.set(true);
+    try { await this.api.resetarDemo(); await this.carregar(); }
+    catch { /* sem MODO_DEMO o endpoint não existe */ }
+    finally { this.resetando.set(false); }
   }
 
   sair() { this.api.sair(); this.router.navigate(['/entrar']); }

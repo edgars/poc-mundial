@@ -24,12 +24,19 @@ public sealed class Seeder(string connectionString)
         return await c.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM dbo.conferencia") > 0;
     }
 
+    /// <summary>
+    /// Story 5.3 / FR-51: devolve o sistema ao estado semeado, para apresentar duas vezes seguidas
+    /// sem dado sujo. Como Semear() já limpa antes de inserir, o reset é apenas semear de novo.
+    /// </summary>
+    public Task Resetar() => Semear();
+
     /// <summary>Tudo ou nada: se qualquer passo falhar, o banco volta ao estado vazio.</summary>
     public async Task Semear()
     {
         await using var c = new SqlConnection(connectionString);
         await c.OpenAsync();
         await c.ExecuteAsync(@"
+            DELETE FROM dbo.log_even;
             DELETE FROM dbo.conferencia; DELETE FROM dbo.acesso;
             DELETE FROM dbo.estoq; DELETE FROM dbo.forne; DELETE FROM dbo.usuario;");
 
@@ -53,6 +60,8 @@ public sealed class Seeder(string connectionString)
             Perm(mat, "estoq", true, podeIncluir, podeIncluir, podeIncluir, "Cadastro de produtos");
             Perm(mat, "forne", true, false, false, false, "Fornecedores");
             Perm(mat, "log_even", mat == "04310", false, false, false, "Auditoria");
+            // Só a supervisão troca senha (FR-3); operador não mexe em usuario.
+            if (mat == "04310") Perm(mat, "usuario", true, true, true, false, "Usuarios");
         }
         await c.ExecuteAsync(@"
             INSERT INTO dbo.acesso (matric, arquivo, descri, consultar, incluir, alterar, excluir)

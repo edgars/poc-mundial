@@ -2,6 +2,7 @@ import { Component, inject, signal, ElementRef, viewChild, afterNextRender } fro
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Api } from '../api/api';
+import { Sessao } from '../api/sessao';
 
 @Component({
   selector: 'app-entrar',
@@ -43,6 +44,10 @@ import { Api } from '../api/api';
           {{ ocupado() ? 'Entrando…' : 'Entrar' }}
         </button>
 
+        @if (sessao.expirou()) {
+          <div class="erro" style="background:var(--attention-wash);border-color:rgba(251,191,36,.4);
+               color:var(--attention)">Sessão encerrada por inatividade</div>
+        }
         @if (erro()) { <div class="erro">{{ erro() }}</div> }
 
         <div class="dica">
@@ -58,6 +63,7 @@ import { Api } from '../api/api';
 })
 export class Entrar {
   private api = inject(Api);
+  sessao = inject(Sessao);
   private router = inject(Router);
   private primeiro = viewChild<ElementRef<HTMLInputElement>>('primeiro');
 
@@ -68,7 +74,7 @@ export class Entrar {
 
   constructor() {
     afterNextRender(() => this.primeiro()?.nativeElement.focus());
-    if (this.api.restaurar()) this.router.navigate(['/docas']);
+    if (this.api.restaurar()) { this.sessao.iniciar(); this.router.navigateByUrl(this.sessao.destinoAposEntrar()); }
   }
 
   async entrar() {
@@ -76,7 +82,10 @@ export class Entrar {
     this.ocupado.set(true);
     try {
       await this.api.entrar(this.matricula.trim(), this.senha);
-      this.router.navigate(['/docas']);
+      this.sessao.expirou.set(false);
+      this.sessao.iniciar();
+      // Story 1.7: quem foi desconectado no meio de uma conferência volta para ela.
+      this.router.navigateByUrl(this.sessao.destinoAposEntrar());
     } catch (e: any) {
       // AD-11: a mensagem do legado chega em problem+json
       this.erro.set(e?.error?.detail ?? 'Não foi possível entrar.');

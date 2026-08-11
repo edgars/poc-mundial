@@ -18,6 +18,8 @@ var segredoJwt = Environment.GetEnvironmentVariable("JWT_SEGREDO")
     ?? throw new InvalidOperationException("JWT_SEGREDO não definida. Veja .env.example.");
 var validadeSessao = TimeSpan.FromMinutes(
     int.TryParse(Environment.GetEnvironmentVariable("SESSAO_MINUTOS"), out var m) ? m : 480);
+// Spec OpenAPI e Swagger UI. Ligados por padrão na POC; em produção basta DOCS_ABERTOS=false.
+var docsAbertos = Environment.GetEnvironmentVariable("DOCS_ABERTOS")?.ToLowerInvariant() != "false";
 
 builder.Services.AddSingleton(new FabricaConexao(conexao));
 builder.Services.AddSingleton<IRelogio, Relogio>();
@@ -27,6 +29,10 @@ builder.Services.AddScoped<IAcessoRepositorio, AcessoRepositorio>();
 builder.Services.AddScoped<IProdutoConsulta, ProdutoConsulta>();
 builder.Services.AddScoped<IProdutoRepositorio, ProdutoRepositorio>();
 builder.Services.AddScoped<CadastrarCodigos>();
+builder.Services.AddScoped<IFornecedorConsulta, FornecedorConsulta>();
+builder.Services.AddScoped<IAuditoriaConsulta, AuditoriaConsulta>();
+builder.Services.AddScoped<ConsultarFornecedores>();
+builder.Services.AddScoped<DefinirSenha>();
 builder.Services.AddSingleton<Mundial.Infraestrutura.Etiquetas.GeradorZpl>();
 builder.Services.AddScoped<IDocumentoRepositorio, DocumentoRepositorio>();
 builder.Services.AddScoped<IAuditoria, Auditoria>();
@@ -49,6 +55,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 builder.Services.AddAuthorization(Seguranca.RegistrarPolicies);
 
+if (docsAbertos) builder.Services.AdicionarDocumentacao();
+
 builder.Services.ConfigureHttpJsonOptions(o =>
 {
     o.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
@@ -64,6 +72,8 @@ var app = builder.Build();
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
+
+if (docsAbertos) app.UsarDocumentacao();
 
 // --- AD-11: contrato de erro RFC 9457 com extensão ruleKey ---
 IResult Problema(ResultadoRegra r, int status = StatusCodes.Status422UnprocessableEntity)
@@ -85,7 +95,8 @@ IResult Problema(ResultadoRegra r, int status = StatusCodes.Status422Unprocessab
     return Results.Problem(pd);
 }
 
-app.MapGet("/api/saude", () => Results.Ok(new { estado = "no ar", modoDemo }));
+app.MapGet("/api/saude", () => Results.Ok(new { estado = "no ar", modoDemo }))
+   .WithTags("Saúde").WithSummary("Diz se a API está no ar e se o modo demo está ligado.");
 
 // --- autenticação ---
 app.MapPost("/api/entrar", async (PedidoLogin pedido, Autenticar autenticar) =>
@@ -105,7 +116,34 @@ app.MapPost("/api/entrar", async (PedidoLogin pedido, Autenticar autenticar) =>
                 consultar = p.Consultar, incluir = p.Incluir, alterar = p.Alterar, excluir = p.Excluir
             })
         });
-});
+}).WithTags("Autenticação").WithSummary("Troca matrícula e senha por um bearer JWT.");
+
+// O botão Authorize do Swagger fala OAuth2 password grant, que é form-urlencoded e espera
+// access_token/token_type. Mesmas regras de /api/entrar — só muda o envelope.
+if (docsAbertos)
+{
+    app.MapPost(Documentacao.CaminhoToken, async (HttpRequest requisicao, Autenticar autenticar) =>
+    {
+        if (!requisicao.HasFormContentType)
+            return Results.BadRequest(new { error = "invalid_request", error_description = "Envie form-urlencoded." });
+
+        var formulario = await requisicao.ReadFormAsync();
+        var pedido = new PedidoLogin(formulario["username"].ToString(), formulario["password"].ToString());
+        var (usuario, resultado) = await autenticar.Executar(pedido);
+        if (usuario is null)
+            return Results.Json(new { error = "invalid_grant", error_description = resultado.Mensagem },
+                statusCode: StatusCodes.Status400BadRequest);
+
+        return Results.Ok(new
+        {
+            access_token = Seguranca.GerarToken(usuario, segredoJwt, validadeSessao),
+            token_type = "Bearer",
+            expires_in = (int)validadeSessao.TotalSeconds
+        });
+    }).AllowAnonymous().DisableAntiforgery()
+      .WithTags("Autenticação")
+      .WithSummary("Password grant OAuth2 — é isto que o Authorize do Swagger chama.");
+}
 
 // --- painel de docas (FR-43..48) ---
 app.MapGet("/api/docas", async (IDocumentoRepositorio repo) =>
@@ -118,7 +156,8 @@ app.MapGet("/api/docas", async (IDocumentoRepositorio repo) =>
         temDivergencia = d.TemDivergencia, temPendencia = d.TemPendencia,
         abertaDesde = d.AbertaDesdeUtc
     }));
-}).RequireAuthorization("conferenci:consultar");
+}).RequireAuthorization("conferenci:consultar")
+  .WithTags("Docas").WithSummary("Painel das docas com estado, progresso e divergências.");
 
 // --- conferência ---
 app.MapGet("/api/conferencia", async (string documento, AbrirDocumento abrir) =>
@@ -126,7 +165,8 @@ app.MapGet("/api/conferencia", async (string documento, AbrirDocumento abrir) =>
     var (doc, resultado) = await abrir.Executar(documento);
     if (doc is null) return Problema(resultado, StatusCodes.Status404NotFound);
     return Results.Ok(Projetar(doc, resultado));
-}).RequireAuthorization("conferenci:consultar");
+}).RequireAuthorization("conferenci:consultar")
+  .WithTags("Conferência").WithSummary("Abre um documento e devolve seus itens e situação.");
 
 app.MapPost("/api/conferencia/leituras",
     async (string documento, LeituraPedido pedido, ClaimsPrincipal quem,
@@ -138,7 +178,8 @@ app.MapPost("/api/conferencia/leituras",
     var podeIncluir = quem.HasClaim("perm", Seguranca.ClaimPermissao("estoq", Operacao.Incluir));
     var leitura = await resolver.Executar(doc, pedido.Codigo, podeIncluir);
     return Results.Ok(leitura);
-}).RequireAuthorization("conferenci:consultar");
+}).RequireAuthorization("conferenci:consultar")
+  .WithTags("Conferência").WithSummary("Resolve um código lido (EAN/DUN-14) contra os itens do documento.");
 
 app.MapPost("/api/conferencia/lancamentos",
     async (string documento, LancamentoPedido pedido, ClaimsPrincipal quem,
@@ -150,7 +191,8 @@ app.MapPost("/api/conferencia/lancamentos",
     if (!r.Passou) return Problema(r);
     var (atualizado, resultado) = await abrir.Executar(documento);
     return Results.Ok(Projetar(atualizado!, resultado));
-}).RequireAuthorization("conferenci:alterar");
+}).RequireAuthorization("conferenci:alterar")
+  .WithTags("Conferência").WithSummary("Lança quantidade recebida de um item (usa versao para concorrência otimista).");
 
 app.MapDelete("/api/conferencia/lancamentos",
     async (string documento, string codigo, bool confirmado, ClaimsPrincipal quem,
@@ -162,7 +204,8 @@ app.MapDelete("/api/conferencia/lancamentos",
     if (!r.Passou) return Problema(r);
     var (atualizado, resultado) = await abrir.Executar(documento);
     return Results.Ok(Projetar(atualizado!, resultado));
-}).RequireAuthorization("conferenci:excluir");
+}).RequireAuthorization("conferenci:excluir")
+  .WithTags("Conferência").WithSummary("Estorna o lançamento de um item.");
 
 app.MapPost("/api/conferencia/fechamento",
     async (string documento, FechamentoPedido pedido, ClaimsPrincipal quem,
@@ -174,7 +217,8 @@ app.MapPost("/api/conferencia/fechamento",
     if (!r.Passou) return Problema(r);
     var (atualizado, resultado) = await abrir.Executar(documento);
     return Results.Ok(Projetar(atualizado!, resultado));
-}).RequireAuthorization("conferenci:alterar");
+}).RequireAuthorization("conferenci:alterar")
+  .WithTags("Conferência").WithSummary("Fecha o documento; com divergência exige confirmado=true.");
 
 // --- cadastro de códigos DUN-14 (Épico 3) ---
 app.MapGet("/api/produtos/{codigo}", async (string codigo, IProdutoConsulta produtos) =>
@@ -188,7 +232,8 @@ app.MapGet("/api/produtos/{codigo}", async (string codigo, IProdutoConsulta prod
             embalagem = p.Embalagem, embalagemQtd = p.EmbalagemQtd,
             ean = p.Ean, dun = p.Dun
         });
-}).RequireAuthorization("estoq:consultar");
+}).RequireAuthorization("estoq:consultar")
+  .WithTags("Produtos").WithSummary("Consulta produto por código, com EAN e DUN-14 cadastrados.");
 
 app.MapPut("/api/produtos/{codigo}/codigos", async (string codigo, CadastroPedido pedido,
     ClaimsPrincipal quem, CadastrarCodigos cadastrar) =>
@@ -196,7 +241,8 @@ app.MapPut("/api/produtos/{codigo}/codigos", async (string codigo, CadastroPedid
     var r = await cadastrar.Executar(
         new PedidoCadastro(codigo, pedido.Dun, pedido.Confirmado), quem.Matricula());
     return r.Passou ? Results.Ok(new { gravado = true }) : Problema(r);
-}).RequireAuthorization("estoq:alterar");
+}).RequireAuthorization("estoq:alterar")
+  .WithTags("Produtos").WithSummary("Grava os DUN-14 do produto.");
 
 // --- etiqueta ZPL (Épico 3) ---
 app.MapGet("/api/produtos/{codigo}/etiqueta", async (string codigo, string? codigoBarras,
@@ -212,7 +258,8 @@ app.MapGet("/api/produtos/{codigo}/etiqueta", async (string codigo, string? codi
     return Results.Ok(new { codigo = p.Codigo.Trim(), descricao = p.Descricao.Trim(),
         embalagem = p.Embalagem, embalagemQtd = p.EmbalagemQtd, codigoBarras = cb,
         zpl = gerador.Gerar(p, cb) });
-}).RequireAuthorization("estoq:consultar");
+}).RequireAuthorization("estoq:consultar")
+  .WithTags("Produtos").WithSummary("Gera o ZPL da etiqueta do produto.");
 
 // --- consultas (AD-15) ---
 app.MapGet("/api/conferencias", async (IDocumentoRepositorio repo,
@@ -222,7 +269,38 @@ app.MapGet("/api/conferencias", async (IDocumentoRepositorio repo,
     var itens = await repo.Listar(filtro);
     var total = await repo.ContarListagem(filtro);
     return Results.Ok(new { itens, total, pagina, tamanho = filtro.TamanhoEfetivo });
-}).RequireAuthorization("conferenci:consultar");
+}).RequireAuthorization("conferenci:consultar")
+  .WithTags("Consultas").WithSummary("Lista conferências paginadas, com busca e ordenação.");
+
+// --- fornecedores (FR-34, FR-35) ---
+app.MapGet("/api/fornecedores", async (ConsultarFornecedores consultar,
+    int pagina = 0, int tamanho = 50, string? busca = null) =>
+{
+    var r = await consultar.Executar(new FiltroListagem(pagina, tamanho, busca));
+    return Results.Ok(new { itens = r.Itens, total = r.Total, pagina = r.PaginaAtual, tamanho = r.Tamanho });
+}).RequireAuthorization("forne:consultar")
+  .WithTags("Consultas").WithSummary("Lista fornecedores paginados.");
+
+// --- auditoria (FR-41, FR-42) ---
+app.MapGet("/api/auditoria", async (IAuditoriaConsulta auditoria,
+    int pagina = 0, int tamanho = 50, string? busca = null) =>
+{
+    var filtro = new FiltroListagem(pagina, tamanho, busca);
+    var itens = await auditoria.Listar(filtro);
+    var total = await auditoria.Contar(filtro);
+    return Results.Ok(new { itens, total, pagina, tamanho = filtro.TamanhoEfetivo });
+}).RequireAuthorization("log_even:consultar")
+  .WithTags("Consultas").WithSummary("Lista o log de eventos (auditoria).");
+
+// --- troca de senha (FR-3) ---
+app.MapPost("/api/senha", (SenhaPedido pedido, DefinirSenha definir, ClaimsPrincipal quem) =>
+{
+    var (hash, r) = definir.Executar(pedido.Senha, pedido.Confirmacao);
+    if (hash is null) return Problema(r);
+    // O POC não persiste a troca: usuários vêm do seed e voltam a ele no reset (Story 5.3).
+    return Results.Ok(new { trocada = true, matricula = quem.Matricula() });
+}).RequireAuthorization("usuario:alterar")
+  .WithTags("Autenticação").WithSummary("Valida e troca a senha do operador logado.");
 
 // --- andaime de demonstração (AD-21) ---
 if (modoDemo)
@@ -232,7 +310,16 @@ if (modoDemo)
         if (await seeder.JaSemeado()) return Results.Ok(new { semeado = false, motivo = "já havia dado" });
         await seeder.Semear();
         return Results.Ok(new { semeado = true });
-    });
+    }).RequireAuthorization("conferenci:alterar")
+      .WithTags("Demo").WithSummary("Semeia a massa de demonstração se o banco estiver vazio.");
+
+    // Story 5.3 / FR-51: reset entre apresentações.
+    app.MapPost("/api/demo/reset", async (Seeder seeder) =>
+    {
+        await seeder.Resetar();
+        return Results.Ok(new { resetado = true });
+    }).RequireAuthorization("conferenci:alterar")
+      .WithTags("Demo").WithSummary("Reseta a massa entre apresentações.");
 
     app.MapGet("/api/demo/codigos", () => Results.Ok(new[]
     {
@@ -242,7 +329,7 @@ if (modoDemo)
         new { codigo = "7899999000123", efeito = "não existe em nenhum produto", tipo = "recusado" },
         new { codigo = "7890000111222", efeito = "existe em dois produtos — leitura ambígua", tipo = "ambiguo" },
         new { codigo = "7894455000012", efeito = "existe, mas não pertence a este documento", tipo = "recusado" }
-    }));
+    })).WithTags("Demo").WithSummary("Códigos de roteiro e o efeito de cada um.");
 }
 
 // Semeia na subida quando o banco está vazio (NFR-11: demo funciona de checkout limpo).
@@ -306,3 +393,4 @@ record LeituraPedido(string Codigo);
 record LancamentoPedido(string Codigo, decimal Quantidade, bool Confirmado, string? Versao = null);
 record FechamentoPedido(bool Confirmado);
 record CadastroPedido(string[] Dun, bool Confirmado);
+record SenhaPedido(string Senha, string Confirmacao);

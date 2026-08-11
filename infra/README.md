@@ -122,58 +122,53 @@ Ao fim disto o SQL Server já está no ar e saudável — SQL Server 2022 de ver
 o alvo do spine. O `azure-sql-edge` do `.env.example` existe só para
 desenvolvimento em Apple Silicon; nesta CVM x86 não é preciso.
 
-A aplicação sobe no passo 5, depois que as imagens estiverem no registry.
+A aplicação sobe no passo 4, quando o agente de deploy entra em cena.
 
-### 4. Publicar as imagens
+### 4. Instalar o agente de deploy
 
-Compile na sua máquina ou em CI, nunca na CVM — o build do Angular e do .NET
-não cabe confortavelmente em 8 GB junto com o SQL Server.
-
-O `src/Dockerfile` tem dois alvos (`api` e `migracoes`) e o `web/Dockerfile`
-tem um (`web`):
+O agente clona o repositório público na máquina, compila as imagens ali e passa
+a acompanhar `origin/main`. A partir daqui, **todo push na main vira deploy**.
 
 ```bash
-docker buildx build --platform linux/amd64 --target api       -t <tcr>/mundial-api:0.1.0       --push ./src
-docker buildx build --platform linux/amd64 --target migracoes -t <tcr>/mundial-migracoes:0.1.0 --push ./src
-docker buildx build --platform linux/amd64 --target web       -t <tcr>/mundial-web:0.1.0       --push ./web
+scp -i ~/.ssh/<sua-chave> -r infra/deploy ubuntu@<ip>:/tmp/
+ssh -i ~/.ssh/<sua-chave> ubuntu@<ip> 'sudo bash /tmp/deploy/instalar-agente.sh'
 ```
 
-⚠️ **`--platform linux/amd64` não é opcional se você compila em Mac com Apple
-Silicon.** Sem a flag, o build produz imagens arm64 que não rodam na CVM x86, e
-o erro só aparece no `docker compose up` lá, com "exec format error".
+O script é idempotente: rodar de novo apenas atualiza os arquivos. Ele instala
+um timer systemd que roda a cada minuto, e nenhuma credencial fica na máquina —
+o repositório é público e o clone é anônimo.
 
-Espelhe também a imagem do SQL Server no seu TCR — assim a apresentação não
-depende do MCR estar acessível naquele momento:
+O primeiro deploy leva uns 15 minutos (imagem do SDK .NET, `npm ci`, compilação
+do Angular, tudo com cache frio). Os seguintes levam cerca de um minuto.
+
+### 5. Conferir
 
 ```bash
-docker pull mcr.microsoft.com/mssql/server:2022-latest
-docker tag  mcr.microsoft.com/mssql/server:2022-latest <tcr>/mssql-server:2022
-docker push <tcr>/mssql-server:2022
+curl -fsS https://<seu-dominio>/deploy.json     # qual commit está no ar
+curl -fsS https://<seu-dominio>/api/saude       # {"estado":"no ar","modoDemo":true}
+
+ssh ubuntu@<ip> 'sudo docker compose -f /opt/mundial/docker-compose.yml --profile app ps'
+ssh ubuntu@<ip> 'sudo journalctl -u mundial-deploy.service -n 50'
 ```
 
-Depois é só apontar `imagem_sqlserver` para o espelho e reaplicar.
+### Sobre arquitetura, para não confundir
 
-### 5. Subir a aplicação
+O build acontece **na própria CVM, que é x86_64**, então as imagens saem
+`linux/amd64` sem nenhuma flag. `--platform` não aparece em lugar nenhum deste
+processo.
 
-```bash
-ssh ubuntu@<ip>
-sudo docker login <tcr>          # uma vez por máquina
-sudo /opt/mundial/subir.sh
-```
+A flag só importaria em dois cenários que não são o atual:
 
-O `subir.sh` faz `pull` e `up -d` com o profile `app`: `migracoes` roda uma vez,
-a API só sobe depois que o DbUp sair com código 0, e o web só depois que a API
-responder na porta.
+1. **Compilar no seu Mac com Apple Silicon** e enviar a imagem para a máquina.
+   Sem `--platform linux/amd64` o build produz arm64, e o erro só aparece lá,
+   como `exec format error`.
+2. **Compilar num runner** para publicar num registry — o runner do GitHub já é
+   amd64, então seria só uma garantia explícita.
 
-### 6. Conferir
-
-```bash
-sudo docker compose -f /opt/mundial/docker-compose.yml ps
-sudo docker compose -f /opt/mundial/docker-compose.yml logs migracoes
-curl -fsS "$(cat /opt/mundial/url-publica.txt)/api/saude"
-```
-
-A resposta esperada é `{"estado":"no ar","modoDemo":true}`.
+E a CVM é x86 por um motivo só: o **SQL Server 2022 existe apenas para
+`linux/amd64`** (manifesto único, sem manifest list). A aplicação em si roda em
+arm64 sem problema — .NET, Angular e nginx publicam as duas arquiteturas. É o
+banco que amarra, e trocá-lo contrariaria o alvo declarado no spine.
 
 ### 7. Snapshot antes de apresentar
 

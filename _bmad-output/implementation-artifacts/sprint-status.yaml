@@ -35,47 +35,47 @@ project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 development_status:
-  epic-1: backlog
-  1-1-subir-a-aplicação-de-um-checkout-limpo: backlog
-  1-2-ter-usuários-e-permissões-no-banco: backlog
-  1-3-entrar-com-matrícula-e-senha: backlog
-  1-4-ser-barrado-quando-não-tenho-autorização: backlog
-  1-5-confirmar-a-senha-ao-defini-la: backlog
-  1-6-ver-e-fazer-apenas-o-que-minha-permissão-alcança: backlog
-  1-7-ser-desconectado-depois-de-muito-tempo-parado: backlog
+  epic-1: in-progress
+  1-1-subir-a-aplicação-de-um-checkout-limpo: review
+  1-2-ter-usuários-e-permissões-no-banco: review
+  1-3-entrar-com-matrícula-e-senha: review
+  1-4-ser-barrado-quando-não-tenho-autorização: review
+  1-5-confirmar-a-senha-ao-defini-la: review
+  1-6-ver-e-fazer-apenas-o-que-minha-permissão-alcança: review
+  1-7-ser-desconectado-depois-de-muito-tempo-parado: review
   epic-1-retrospective: optional
 
-  epic-2: backlog
-  2-1-ter-documentos-e-produtos-para-conferir: backlog
-  2-2-abrir-o-documento-da-carga-que-chegou: backlog
-  2-3-bipar-o-produto-e-ver-na-hora-o-que-é: backlog
-  2-4-lançar-a-quantidade-recebida: backlog
-  2-5-apagar-um-lançamento-errado: backlog
-  2-6-finalizar-a-conferência: backlog
-  2-7-não-perder-a-contagem-de-outro-operador: backlog
-  2-8-consultar-conferências: backlog
+  epic-2: in-progress
+  2-1-ter-documentos-e-produtos-para-conferir: review
+  2-2-abrir-o-documento-da-carga-que-chegou: review
+  2-3-bipar-o-produto-e-ver-na-hora-o-que-é: review
+  2-4-lançar-a-quantidade-recebida: review
+  2-5-apagar-um-lançamento-errado: review
+  2-6-finalizar-a-conferência: review
+  2-7-não-perder-a-contagem-de-outro-operador: review
+  2-8-consultar-conferências: review
   epic-2-retrospective: optional
 
-  epic-3: backlog
-  3-1-cadastrar-os-códigos-de-embalagem-de-um-produto: backlog
-  3-2-impedir-código-repetido-dentro-do-mesmo-produto: backlog
-  3-3-impedir-código-que-já-é-de-outro-produto: backlog
-  3-4-apagar-um-código-de-embalagem: backlog
-  3-5-gerar-a-etiqueta-da-embalagem: backlog
-  3-6-ver-a-etiqueta-antes-de-imprimir: backlog
+  epic-3: in-progress
+  3-1-cadastrar-os-códigos-de-embalagem-de-um-produto: review
+  3-2-impedir-código-repetido-dentro-do-mesmo-produto: review
+  3-3-impedir-código-que-já-é-de-outro-produto: review
+  3-4-apagar-um-código-de-embalagem: review
+  3-5-gerar-a-etiqueta-da-embalagem: review
+  3-6-ver-a-etiqueta-antes-de-imprimir: review
   epic-3-retrospective: optional
 
-  epic-4: backlog
-  4-1-registrar-tudo-que-muda: backlog
-  4-2-consultar-fornecedor: backlog
-  4-3-ver-o-painel-de-docas: backlog
-  4-4-enxergar-a-exceção-antes-do-resto: backlog
-  4-5-ver-o-painel-se-reorganizar-sozinho: backlog
+  epic-4: in-progress
+  4-1-registrar-tudo-que-muda: review
+  4-2-consultar-fornecedor: review
+  4-3-ver-o-painel-de-docas: review
+  4-4-enxergar-a-exceção-antes-do-resto: review
+  4-5-ver-o-painel-se-reorganizar-sozinho: review
   epic-4-retrospective: optional
 
-  epic-5: backlog
-  5-1-isolar-o-andaime-do-produto: backlog
-  5-2-plantar-os-casos-que-valem-demonstrar: backlog
-  5-3-resetar-entre-uma-apresentação-e-outra: backlog
-  5-4-ter-os-códigos-à-mão-durante-a-apresentação: backlog
+  epic-5: in-progress
+  5-1-isolar-o-andaime-do-produto: review
+  5-2-plantar-os-casos-que-valem-demonstrar: review
+  5-3-resetar-entre-uma-apresentação-e-outra: review
+  5-4-ter-os-códigos-à-mão-durante-a-apresentação: review
   epic-5-retrospective: optional

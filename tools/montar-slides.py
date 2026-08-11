@@ -22,10 +22,17 @@ regras = {
     "15-documento-fechado.png": "AD-10 · NFR-10",
     "17-oferta-de-cadastrar.png": "RK-dab7d2033e2e · AD-8",
     "18-somente-leitura.png": "RK-69b41cd017dd",
+    "19-cadastro-de-codigos.png": "Épico 3 · FR-28",
+    "20-codigo-de-outro-produto.png": "RK-2976e3756f6d",
+    "21-codigo-repetido-no-produto.png": "RK-99e9bfdcea75",
+    "22-consulta-de-conferencias.png": "FR-26 · AD-15",
+    "23-consulta-de-fornecedores.png": "FR-34 · FR-35",
+    "24-trilha-de-auditoria.png": "FR-41 · FR-42",
 }
 roteiros = {
     1: "Entrar no sistema", 5: "Roteiro 1 · Conferir a carga da doca 1",
     16: "Roteiro 3 · Permissão de inclusão", 18: "Roteiro 4 · Documento fechado",
+    19: "Épico 3 · Códigos de embalagem e etiqueta", 22: "Épico 4 · Consultas do supervisor",
 }
 
 slides = []

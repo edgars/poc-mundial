@@ -46,6 +46,28 @@ export interface ResumoDoca {
   itensLancados: number; itensTotal: number; temDivergencia: boolean; temPendencia: boolean;
   abertaDesde?: string;
 }
+export interface Produto {
+  codigo: string; descricao: string; embalagem?: string; embalagemQtd?: number;
+  ean: (string | null)[]; dun: (string | null)[];
+}
+export interface Etiqueta {
+  codigo: string; descricao: string; embalagem?: string; embalagemQtd?: number;
+  codigoBarras: string; zpl: string;
+}
+export interface ResumoFornecedor {
+  codigo: string; descricao: string; cgc: string; cidade: string; uf: string;
+  situacao: string; obrigatoriosCompletos: boolean; faltando: string[];
+}
+export interface RegistroAuditoria {
+  id: number; quando: string; usuario: string; tabela: string;
+  chave: string; valorAnterior?: string; valorAtual?: string;
+}
+export interface ResumoConferencia {
+  documento: string; fornecedor?: string; doca?: number; matrConf?: string; matrFec?: string;
+  itensLancados: number; itensTotal: number; temDivergencia: boolean; situacao: string; dtHora?: string;
+}
+export interface Pagina<T> { itens: T[]; total: number; pagina: number; tamanho: number }
+
 export interface Leitura {
   estado: 'aceito' | 'recusado' | 'ambiguo' | 'confirmar';
   chave?: string; mensagem?: string; candidatos?: string[];
@@ -108,6 +130,48 @@ export class Api {
     return firstValueFrom(this.http.post<DocumentoConf>(
       `${base()}/api/conferencia/fechamento?documento=${encodeURIComponent(doc)}`,
       { confirmado }, this.auth));
+  }
+
+  produto(codigo: string) {
+    return firstValueFrom(this.http.get<Produto>(`${base()}/api/produtos/${codigo}`, this.auth));
+  }
+
+  gravarCodigos(codigo: string, dun: (string | null)[], confirmado: boolean) {
+    return firstValueFrom(this.http.put<{gravado: boolean}>(
+      `${base()}/api/produtos/${codigo}/codigos`, { dun, confirmado }, this.auth));
+  }
+
+  etiqueta(codigo: string, codigoBarras?: string) {
+    const q = codigoBarras ? `?codigoBarras=${encodeURIComponent(codigoBarras)}` : '';
+    return firstValueFrom(this.http.get<Etiqueta>(`${base()}/api/produtos/${codigo}/etiqueta${q}`, this.auth));
+  }
+
+  conferencias(pagina = 0, tamanho = 50, busca?: string) {
+    const q = new URLSearchParams({ pagina: String(pagina), tamanho: String(tamanho) });
+    if (busca) q.set('busca', busca);
+    return firstValueFrom(this.http.get<Pagina<ResumoConferencia>>(
+      `${base()}/api/conferencias?${q}`, this.auth));
+  }
+
+  fornecedores(pagina = 0, tamanho = 50, busca?: string) {
+    const q = new URLSearchParams({ pagina: String(pagina), tamanho: String(tamanho) });
+    if (busca) q.set('busca', busca);
+    return firstValueFrom(this.http.get<Pagina<ResumoFornecedor>>(`${base()}/api/fornecedores?${q}`, this.auth));
+  }
+
+  auditoria(pagina = 0, tamanho = 50, busca?: string) {
+    const q = new URLSearchParams({ pagina: String(pagina), tamanho: String(tamanho) });
+    if (busca) q.set('busca', busca);
+    return firstValueFrom(this.http.get<Pagina<RegistroAuditoria>>(`${base()}/api/auditoria?${q}`, this.auth));
+  }
+
+  resetarDemo() {
+    return firstValueFrom(this.http.post<{resetado: boolean}>(`${base()}/api/demo/reset`, {}, this.auth));
+  }
+
+  pode(tabela: string, op: 'consultar' | 'incluir' | 'alterar' | 'excluir') {
+    const chave = tabela.length > 10 ? tabela.slice(0, 10) : tabela;
+    return this.sessao()?.permissoes.some(p => p.tabela === chave && p[op]) ?? false;
   }
 
   codigosDemo() {

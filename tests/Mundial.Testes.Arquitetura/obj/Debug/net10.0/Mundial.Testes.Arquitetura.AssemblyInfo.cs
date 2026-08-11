@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Mundial.Testes.Arquitetura")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+712697ce578b167fc44a5b099b8272b1080210ed")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+10f5b769ce6fa6bdd376c3d571ebaaa9bb038e3b")]
 [assembly: System.Reflection.AssemblyProductAttribute("Mundial.Testes.Arquitetura")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Mundial.Testes.Arquitetura")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

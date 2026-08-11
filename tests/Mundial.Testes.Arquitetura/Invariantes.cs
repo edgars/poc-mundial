@@ -102,24 +102,47 @@ public class Invariantes
     [Fact(DisplayName = "AD-8 · todo endpoint exige autorização, salvo os públicos declarados")]
     public void AD8_todo_endpoint_exige_autorizacao()
     {
-        string[] publicos = ["/api/saude", "/api/entrar", "/api/demo/codigos", "/api/demo/semear"];
+        // Endpoints que podem ficar abertos, e o motivo de cada um.
+        string[] publicos = [
+            "/api/saude",         // sonda de disponibilidade
+            "/api/entrar",        // é quem emite o token
+            "/api/demo/codigos",  // lista fixa de apoio à apresentação, sem dado de negócio
+        ];
+
         var programa = Ler("src", "Mundial.Api", "Program.cs");
 
-        // cada bloco começa em app.MapX(" e termina no ");" que fecha a chamada
-        var blocos = Regex.Matches(programa, @"app\.Map(?:Get|Post|Put|Delete)\(""(?<rota>[^""]+)""(?<corpo>.*?)\n(?:\}\)|\s*\)\s*)(?<sufixo>[^;]*);",
-            RegexOptions.Singleline);
+        // Varre por declaração, não por bloco: casar o corpo inteiro com regex perdia os endpoints
+        // aninhados em `if (modoDemo) { … }`, e um fiscal cego é pior que nenhum.
+        var declaracoes = Regex.Matches(programa, @"app\.Map(?:Get|Post|Put|Delete)\(""(?<rota>[^""]+)""")
+                               .Cast<Match>().ToList();
+        Assert.NotEmpty(declaracoes);
 
         var desprotegidos = new List<string>();
-        foreach (Match b in blocos)
+        for (var i = 0; i < declaracoes.Count; i++)
         {
-            var rota = b.Groups["rota"].Value;
+            var rota = declaracoes[i].Groups["rota"].Value;
             if (publicos.Contains(rota)) continue;
-            var trecho = b.Value;
-            if (!trecho.Contains("RequireAuthorization")) desprotegidos.Add(rota);
+
+            // trecho entre esta declaração e a próxima — onde o RequireAuthorization precisa estar
+            var inicio = declaracoes[i].Index;
+            var fim = i + 1 < declaracoes.Count ? declaracoes[i + 1].Index : programa.Length;
+            if (!programa[inicio..fim].Contains("RequireAuthorization")) desprotegidos.Add(rota);
         }
 
         Assert.True(desprotegidos.Count == 0,
             "Endpoints sem autorização: " + string.Join(", ", desprotegidos));
+    }
+
+    [Fact(DisplayName = "AD-8 · a varredura enxerga todos os endpoints declarados")]
+    public void AD8_varredura_nao_perde_endpoint()
+    {
+        // Guarda-costas do teste acima: se a contagem divergir, a fiscalização tem ponto cego.
+        var programa = Ler("src", "Mundial.Api", "Program.cs");
+        var declaradas = Regex.Matches(programa, @"app\.Map(?:Get|Post|Put|Delete)\(""[^""]+""").Count;
+        var autorizacoes = Regex.Matches(programa, @"RequireAuthorization\(").Count;
+        Assert.True(declaradas >= autorizacoes,
+            $"{autorizacoes} autorizações para {declaradas} endpoints — a contagem não fecha.");
+        Assert.True(declaradas > 10, $"apenas {declaradas} endpoints encontrados — regex quebrada?");
     }
 
     [Fact(DisplayName = "AD-7 · nenhum endpoint aceita matrícula vinda do corpo da requisição")]

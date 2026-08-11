@@ -127,6 +127,34 @@ await page.goto(`${WEB}/conferencia/000147744%2F1`, { waitUntil: 'networkidle' }
 await espera(1200);
 await tirar(page, 'Somente leitura', 'Documento da doca 4, fechado desde o seed. Somente leitura, com quem fechou registrado no topo.');
 
+console.log('Épico 3 · Cadastro de códigos e etiqueta');
+await page.goto(`${WEB}/codigos?codigo=04127`, { waitUntil: 'networkidle' });
+await espera(1400);
+await tirar(page, 'Cadastro de codigos', 'Os três slots de DUN-14 do produto, com a prévia da etiqueta ao lado e o ZPL cru para inspeção. Rosana pode alterar; o Cleber veria os campos travados.');
+
+await page.fill('#dun1', '17891234500010');   // código que já é da cerveja
+await page.click('button:has-text("Gravar")');
+await espera(1200);
+await tirar(page, 'Codigo de outro produto', 'Código que já pertence a outro produto. O erro aparece NO CAMPO que o causou, não num resumo no topo — as regras são de duplicidade cruzada entre os três slots, então saber qual conflita é a informação.');
+
+await page.fill('#dun1', '17891234567894');   // igual ao slot 1
+await page.click('button:has-text("Gravar")');
+await espera(1200);
+await tirar(page, 'Codigo repetido no produto', 'Mesmo código em dois slots do mesmo produto. Outra regra, outro campo, mesma disciplina de localização do erro.');
+
+console.log('Épico 4 · Consultas do supervisor');
+await page.goto(`${WEB}/consultas`, { waitUntil: 'networkidle' });
+await espera(1500);
+await tirar(page, 'Consulta de conferencias', 'A TabelaDensa do supervisor: densidade alta, separação por borda, sem cartão decorativo. Setas navegam, Enter abre, / vai para a busca.');
+
+await page.click('button:has-text("Fornecedores")');
+await espera(1200);
+await tirar(page, 'Consulta de fornecedores', 'Fornecedores com o resultado das treze regras de obrigatoriedade rodando sobre o dado gravado — a lacuna fica visível em vez de silenciosa.');
+
+await page.click('button:has-text("Auditoria")');
+await espera(1200);
+await tirar(page, 'Trilha de auditoria', 'A trilha no formato do legado, recuperado da função reg_log do FoxPro: quem, quando, qual tabela, e o valor antes e depois. Só a supervisão enxerga.');
+
 await navegador.close();
 console.log(JSON.stringify(passos, null, 2));
 import { writeFileSync } from 'node:fs';
