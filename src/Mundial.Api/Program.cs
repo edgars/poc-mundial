@@ -1,9 +1,12 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Mundial.Api;
 using Mundial.Aplicacao;
 using Mundial.Demo;
 using Mundial.Dominio;
 using Mundial.Infraestrutura;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +14,10 @@ var conexao = Environment.GetEnvironmentVariable("CONNECTION_STRING")
     ?? throw new InvalidOperationException("CONNECTION_STRING não definida. Veja .env.example.");
 var modoDemo = Environment.GetEnvironmentVariable("MODO_DEMO")?.ToLowerInvariant() == "true";
 var origemWeb = Environment.GetEnvironmentVariable("ORIGEM_WEB") ?? "http://localhost:3000";
+var segredoJwt = Environment.GetEnvironmentVariable("JWT_SEGREDO")
+    ?? throw new InvalidOperationException("JWT_SEGREDO não definida. Veja .env.example.");
+var validadeSessao = TimeSpan.FromMinutes(
+    int.TryParse(Environment.GetEnvironmentVariable("SESSAO_MINUTOS"), out var m) ? m : 480);
 
 builder.Services.AddSingleton(new FabricaConexao(conexao));
 builder.Services.AddSingleton<IRelogio, Relogio>();
@@ -32,6 +39,16 @@ builder.Services.AddScoped<FinalizarDocumento>();
 // AD-21: o andaime só é registrado com MODO_DEMO=true.
 if (modoDemo) builder.Services.AddSingleton(new Seeder(conexao));
 
+// AD-7: autenticação por JWT. AD-8: uma policy por tabela e operação.
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(o =>
+    {
+        // Sem isto o ASP.NET remapeia "sub" para NameIdentifier e a busca pela claim falha.
+        o.MapInboundClaims = false;
+        o.TokenValidationParameters = Seguranca.Validacao(segredoJwt);
+    });
+builder.Services.AddAuthorization(Seguranca.RegistrarPolicies);
+
 builder.Services.ConfigureHttpJsonOptions(o =>
 {
     o.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
@@ -45,6 +62,8 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
 
 var app = builder.Build();
 app.UseCors();
+app.UseAuthentication();
+app.UseAuthorization();
 
 // --- AD-11: contrato de erro RFC 9457 com extensão ruleKey ---
 IResult Problema(ResultadoRegra r, int status = StatusCodes.Status422UnprocessableEntity)
@@ -76,6 +95,8 @@ app.MapPost("/api/entrar", async (PedidoLogin pedido, Autenticar autenticar) =>
         ? Problema(resultado, StatusCodes.Status401Unauthorized)
         : Results.Ok(new
         {
+            token = Seguranca.GerarToken(usuario, segredoJwt, validadeSessao),
+            expiraEm = DateTime.UtcNow.Add(validadeSessao),
             matricula = usuario.Matricula,
             nome = usuario.Nome,
             permissoes = usuario.Permissoes.Select(p => new
@@ -97,7 +118,7 @@ app.MapGet("/api/docas", async (IDocumentoRepositorio repo) =>
         temDivergencia = d.TemDivergencia, temPendencia = d.TemPendencia,
         abertaDesde = d.AbertaDesdeUtc
     }));
-});
+}).RequireAuthorization("conferenci:consultar");
 
 // --- conferência ---
 app.MapGet("/api/conferencia", async (string documento, AbrirDocumento abrir) =>
@@ -105,50 +126,55 @@ app.MapGet("/api/conferencia", async (string documento, AbrirDocumento abrir) =>
     var (doc, resultado) = await abrir.Executar(documento);
     if (doc is null) return Problema(resultado, StatusCodes.Status404NotFound);
     return Results.Ok(Projetar(doc, resultado));
-});
+}).RequireAuthorization("conferenci:consultar");
 
 app.MapPost("/api/conferencia/leituras",
-    async (string documento, LeituraPedido pedido, AbrirDocumento abrir, ResolverLeitura resolver) =>
+    async (string documento, LeituraPedido pedido, ClaimsPrincipal quem,
+           AbrirDocumento abrir, ResolverLeitura resolver) =>
 {
     var (doc, _) = await abrir.Executar(documento);
     if (doc is null) return Results.NotFound();
-    var leitura = await resolver.Executar(doc, pedido.Codigo, pedido.PodeIncluir);
+    // A oferta de cadastrar depende da permissão real, lida do token — não do que o cliente afirma.
+    var podeIncluir = quem.HasClaim("perm", Seguranca.ClaimPermissao("estoq", Operacao.Incluir));
+    var leitura = await resolver.Executar(doc, pedido.Codigo, podeIncluir);
     return Results.Ok(leitura);
-});
+}).RequireAuthorization("conferenci:consultar");
 
 app.MapPost("/api/conferencia/lancamentos",
-    async (string documento, LancamentoPedido pedido, AbrirDocumento abrir, LancarQuantidade lancar) =>
-{
-    var (doc, _) = await abrir.Executar(documento);
-    if (doc is null) return Results.NotFound();
-    var r = await lancar.Executar(doc, pedido.Codigo, pedido.Quantidade, pedido.Matricula, pedido.Confirmado, pedido.Versao);
-    if (!r.Passou) return Problema(r);
-    var (atualizado, resultado) = await abrir.Executar(documento);
-    return Results.Ok(Projetar(atualizado!, resultado));
-});
-
-app.MapDelete("/api/conferencia/lancamentos",
-    async (string documento, string codigo, string matricula, bool confirmado,
+    async (string documento, LancamentoPedido pedido, ClaimsPrincipal quem,
            AbrirDocumento abrir, LancarQuantidade lancar) =>
 {
     var (doc, _) = await abrir.Executar(documento);
     if (doc is null) return Results.NotFound();
-    var r = await lancar.Excluir(doc, codigo, matricula, confirmado);
+    var r = await lancar.Executar(doc, pedido.Codigo, pedido.Quantidade, quem.Matricula(), pedido.Confirmado, pedido.Versao);
     if (!r.Passou) return Problema(r);
     var (atualizado, resultado) = await abrir.Executar(documento);
     return Results.Ok(Projetar(atualizado!, resultado));
-});
+}).RequireAuthorization("conferenci:alterar");
 
-app.MapPost("/api/conferencia/fechamento",
-    async (string documento, FechamentoPedido pedido, AbrirDocumento abrir, FinalizarDocumento finalizar) =>
+app.MapDelete("/api/conferencia/lancamentos",
+    async (string documento, string codigo, bool confirmado, ClaimsPrincipal quem,
+           AbrirDocumento abrir, LancarQuantidade lancar) =>
 {
     var (doc, _) = await abrir.Executar(documento);
     if (doc is null) return Results.NotFound();
-    var r = await finalizar.Executar(doc, pedido.Matricula, pedido.Confirmado);
+    var r = await lancar.Excluir(doc, codigo, quem.Matricula(), confirmado);
     if (!r.Passou) return Problema(r);
     var (atualizado, resultado) = await abrir.Executar(documento);
     return Results.Ok(Projetar(atualizado!, resultado));
-});
+}).RequireAuthorization("conferenci:excluir");
+
+app.MapPost("/api/conferencia/fechamento",
+    async (string documento, FechamentoPedido pedido, ClaimsPrincipal quem,
+           AbrirDocumento abrir, FinalizarDocumento finalizar) =>
+{
+    var (doc, _) = await abrir.Executar(documento);
+    if (doc is null) return Results.NotFound();
+    var r = await finalizar.Executar(doc, quem.Matricula(), pedido.Confirmado);
+    if (!r.Passou) return Problema(r);
+    var (atualizado, resultado) = await abrir.Executar(documento);
+    return Results.Ok(Projetar(atualizado!, resultado));
+}).RequireAuthorization("conferenci:alterar");
 
 // --- cadastro de códigos DUN-14 (Épico 3) ---
 app.MapGet("/api/produtos/{codigo}", async (string codigo, IProdutoConsulta produtos) =>
@@ -162,15 +188,15 @@ app.MapGet("/api/produtos/{codigo}", async (string codigo, IProdutoConsulta prod
             embalagem = p.Embalagem, embalagemQtd = p.EmbalagemQtd,
             ean = p.Ean, dun = p.Dun
         });
-});
+}).RequireAuthorization("estoq:consultar");
 
 app.MapPut("/api/produtos/{codigo}/codigos", async (string codigo, CadastroPedido pedido,
-    CadastrarCodigos cadastrar) =>
+    ClaimsPrincipal quem, CadastrarCodigos cadastrar) =>
 {
     var r = await cadastrar.Executar(
-        new PedidoCadastro(codigo, pedido.Dun, pedido.Confirmado), pedido.Matricula);
+        new PedidoCadastro(codigo, pedido.Dun, pedido.Confirmado), quem.Matricula());
     return r.Passou ? Results.Ok(new { gravado = true }) : Problema(r);
-});
+}).RequireAuthorization("estoq:alterar");
 
 // --- etiqueta ZPL (Épico 3) ---
 app.MapGet("/api/produtos/{codigo}/etiqueta", async (string codigo, string? codigoBarras,
@@ -186,7 +212,7 @@ app.MapGet("/api/produtos/{codigo}/etiqueta", async (string codigo, string? codi
     return Results.Ok(new { codigo = p.Codigo.Trim(), descricao = p.Descricao.Trim(),
         embalagem = p.Embalagem, embalagemQtd = p.EmbalagemQtd, codigoBarras = cb,
         zpl = gerador.Gerar(p, cb) });
-});
+}).RequireAuthorization("estoq:consultar");
 
 // --- consultas (AD-15) ---
 app.MapGet("/api/conferencias", async (IDocumentoRepositorio repo,
@@ -196,7 +222,7 @@ app.MapGet("/api/conferencias", async (IDocumentoRepositorio repo,
     var itens = await repo.Listar(filtro);
     var total = await repo.ContarListagem(filtro);
     return Results.Ok(new { itens, total, pagina, tamanho = filtro.TamanhoEfetivo });
-});
+}).RequireAuthorization("conferenci:consultar");
 
 // --- andaime de demonstração (AD-21) ---
 if (modoDemo)
@@ -276,7 +302,7 @@ static object Projetar(Documento doc, ResultadoRegra aviso) => new
     })
 };
 
-record LeituraPedido(string Codigo, bool PodeIncluir = false);
-record LancamentoPedido(string Codigo, decimal Quantidade, string Matricula, bool Confirmado, string? Versao = null);
-record FechamentoPedido(string Matricula, bool Confirmado);
-record CadastroPedido(string[] Dun, string Matricula, bool Confirmado);
+record LeituraPedido(string Codigo);
+record LancamentoPedido(string Codigo, decimal Quantidade, bool Confirmado, string? Versao = null);
+record FechamentoPedido(bool Confirmado);
+record CadastroPedido(string[] Dun, bool Confirmado);

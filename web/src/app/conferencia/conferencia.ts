@@ -1,7 +1,7 @@
 import { Component, inject, signal, computed, ElementRef, viewChild, afterNextRender, HostListener } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Api, DocumentoConf, Leitura } from '../api/api';
+import { Api, DocumentoConf, Leitura, exibirInstante } from '../api/api';
 import { SinalSonoro } from '../api/som';
 
 type Confirmacao = { chave?: string; mensagem: string; acao: () => void } | null;
@@ -95,7 +95,8 @@ type Confirmacao = { chave?: string; mensagem: string; acao: () => void } | null
     }
     @if (doc()?.fechado) {
       <div class="fechado">
-        Este Documento já foi conferido! Fechado por {{ doc()?.matrFec }} — somente leitura.
+        Este Documento já foi conferido! Fechado por {{ doc()?.matrFec }}
+        em {{ quandoFechou() }} — somente leitura.
       </div>
     }
 
@@ -296,8 +297,7 @@ export class Conferencia {
       // AD-17: devolve a versão que esta tela leu, para o servidor recusar escrita concorrente
       const versao = this.doc()?.itens.find(i => i.codigo === item.codigo)?.versao;
       const atualizado = await this.api.lancar(
-        this.documento, item.codigo, Number(this.qtd),
-        this.api.sessao()!.matricula, confirmado, versao);
+        this.documento, item.codigo, Number(this.qtd), confirmado, versao);
       this.doc.set(atualizado);
       this.ultimoLancado.set(item.codigo);
       this.historico.update(h => [`${item.codigo} · ${this.qtd} un`, ...h].slice(0, 2));
@@ -326,7 +326,7 @@ export class Conferencia {
   async finalizar(confirmado = false) {
     if (this.doc()?.fechado) return;
     try {
-      const atualizado = await this.api.fechar(this.documento, this.api.sessao()!.matricula, confirmado);
+      const atualizado = await this.api.fechar(this.documento, confirmado);
       this.doc.set(atualizado);
       // UX-DR15e: a sequência de conclusão, o único momento que comporta algo mais elaborado
       this.celebrando.set(true);
@@ -351,6 +351,9 @@ export class Conferencia {
     return { aceito: 'Código aceito', confirmar: 'Código aceito',
              recusado: 'Leitura recusada', ambiguo: 'Leitura ambígua' }[l.estado];
   }
+
+  /** AD-19: exibe no fuso do armazém, não em UTC. */
+  quandoFechou() { return exibirInstante(this.doc()?.dtHora); }
 
   voltar() { this.router.navigate(['/docas']); }
 }

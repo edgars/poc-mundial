@@ -29,6 +29,8 @@ services:
       CONNECTION_STRING: ${CONNECTION_STRING}
       MODO_DEMO: ${MODO_DEMO}
       ORIGEM_WEB: ${ORIGEM_WEB}
+      JWT_SEGREDO: ${JWT_SEGREDO}
+      SESSAO_MINUTOS: ${SESSAO_MINUTOS}
       TZ_APLICACAO: ${TZ_APLICACAO}
       INTEGRACAO_ESTOQUE_EXTERNO: ${INTEGRACAO_ESTOQUE_EXTERNO}
     ports: ["${PORTA_API}:5000"]
@@ -42,6 +44,7 @@ services:
       target: web
     environment:
       API_URL: ${API_URL}
+      TZ_APLICACAO: ${TZ_APLICACAO}
     ports: ["3000:3000"]
     depends_on: [api]
 
