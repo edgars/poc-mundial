@@ -7,7 +7,9 @@
 # Garantias:
 #   - imagem marcada pelo commit; a anterior continua na máquina para rollback
 #   - o banco NUNCA é recriado; só migrações, api e web
-#   - falhou o health check, volta sozinho para a versão anterior
+#   - o compose passa a apontar para a imagem deste commit; confere depois
+#     que os containers no ar são mesmo ela
+#   - falhou qualquer das duas, volta sozinho para a versão anterior
 #   - o estado do deploy fica em /opt/mundial/publico/deploy.json, servido
 #     pelo proxy em /deploy.json — é assim que o pipeline confirma o resultado
 set -euo pipefail
@@ -73,6 +75,17 @@ docker build --target web       -t "mundial-web:$ALVO"       -t mundial-web:atua
 
 # ---------------------------------------------------------------------- subida
 cd "$RAIZ"
+
+# O compose lê IMAGEM_* do .env. Sem reescrever aqui, ele recria os containers
+# a partir da tag antiga e o deploy vira um nada silencioso: o health check
+# passa porque a versão velha está saudável, e o commit novo nunca entra no ar.
+aponta_imagens() { # tag
+  sed -i -E "s|^IMAGEM_API=.*|IMAGEM_API=mundial-api:$1|; \
+             s|^IMAGEM_WEB=.*|IMAGEM_WEB=mundial-web:$1|; \
+             s|^IMAGEM_MIGRACOES=.*|IMAGEM_MIGRACOES=mundial-migracoes:$1|" "$RAIZ/.env"
+}
+aponta_imagens "$ALVO"
+
 # O db fica de fora de propósito: não muda entre versões da aplicação, e
 # recriá-lo custaria a indisponibilidade que a demonstração não pode ter.
 docker compose --profile app up -d --force-recreate migracoes api web
@@ -85,24 +98,41 @@ for _ in $(seq 1 $TENTATIVAS_SAUDE); do
   sleep 3
 done
 
+# Responder não basta: a versão anterior também responde. Isto confere que os
+# containers no ar são exatamente as imagens recém-construídas — a verificação
+# que faltava quando o compose seguia apontando para uma tag velha.
+imagem_certa() {
+  local servico esperado rodando
+  for servico in api web; do
+    esperado=$(docker image inspect -f '{{.Id}}' "mundial-$servico:$ALVO" 2>/dev/null || echo x)
+    rodando=$(docker inspect -f '{{.Image}}' "$(docker compose ps -q "$servico")" 2>/dev/null || echo y)
+    if [ "$esperado" != "$rodando" ]; then
+      log "container $servico não está rodando a imagem de ${ALVO:0:7}"
+      return 1
+    fi
+  done
+  return 0
+}
+
+if [ "$saudavel" = "1" ] && ! imagem_certa; then
+  saudavel=0
+  MOTIVO="containers subiram com imagem que não é a deste commit"
+fi
+
 if [ "$saudavel" = "1" ]; then
   log "no ar em ${ALVO:0:7}"
-  registra "ok" "$ALVO" "health check respondeu"
+  registra "ok" "$ALVO" "health check respondeu e os containers rodam a imagem deste commit"
   docker image prune -f >/dev/null 2>&1 || true
   exit 0
 fi
 
 # ------------------------------------------------------------------- rollback
-log "HEALTH CHECK FALHOU — voltando para ${SHA_ANTERIOR:0:7}"
-registra "revertendo" "$ALVO" "health check nao respondeu"
+log "DEPLOY FALHOU — voltando para ${SHA_ANTERIOR:0:7}"
+registra "revertendo" "$ALVO" "${MOTIVO:-health check nao respondeu}"
 
-for img in api web migracoes; do
-  if docker image inspect "mundial-$img:anterior" >/dev/null 2>&1; then
-    docker tag "mundial-$img:anterior" "mundial-$img:atual"
-  fi
-done
+aponta_imagens anterior
 docker compose --profile app up -d --force-recreate migracoes api web
 cd "$FONTE" && git reset --hard "$SHA_ANTERIOR" --quiet || true
 
-registra "revertido" "$SHA_ANTERIOR" "deploy de ${ALVO:0:7} falhou no health check"
+registra "revertido" "$SHA_ANTERIOR" "deploy de ${ALVO:0:7} falhou: ${MOTIVO:-health check}"
 exit 1
