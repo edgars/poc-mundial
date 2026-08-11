@@ -12,25 +12,34 @@ infra/terraform/
   outputs.tf                        IP, URL, próximos passos
   terraform.tfvars.example          copie para terraform.tfvars
   arquivos/docker-compose.yml       a composição que roda na máquina
-  arquivos/subir.sh                 sobe/atualiza a aplicação na máquina
+  arquivos/subir.sh                 subida manual, para quando o agente está parado
   modelos/cloud-init.yaml.tftpl     preparação da máquina no primeiro boot
   modelos/Caddyfile.tftpl           proxy reverso
+infra/deploy/
+  deploy.sh                         build, troca, health check, rollback
+  agente.sh                         compara SHAs e chama o deploy do commit alvo
+  instalar-agente.sh                instala o agente e o timer (idempotente)
 ```
+
+A entrega contínua vive em `.github/workflows/deploy.yml` e nos scripts de
+`infra/deploy/`. Veja [Entrega contínua](#entrega-contínua).
 
 ## Arquitetura da máquina
 
 ```
-navegador → Caddy :443 ─┬─ /      → web:3000  (nginx com o Angular compilado)
-                        └─ /api/* → api:5000  (ASP.NET Core)
-                                       └── db:1433 (só na rede do compose)
+navegador → Caddy :443 ─┬─ /            → web:3000  (nginx com o Angular compilado)
+                        ├─ /api/*       → api:5000  (ASP.NET Core)
+                        │                    └── db:1433 (só na rede do compose)
+                        └─ /deploy.json → arquivo estático com o commit no ar
 ```
 
 Tudo na mesma origem: sem CORS, e um só lugar para o certificado. O `API_URL`
 que o container web injeta no `index.html` é a URL pública — nunca um nome de
 serviço do compose, que só resolve dentro da máquina.
 
-Espelha o `docker-compose.yml` da raiz, com três diferenças: imagens publicadas
-em vez de build, sem porta de banco nem de API expostas, e o proxy na frente.
+Espelha o `docker-compose.yml` da raiz, com três diferenças: consome imagens já
+construídas em vez de declarar `build`, não expõe porta de banco nem de API, e
+põe o proxy na frente. Quem constrói as imagens é o agente de deploy.
 
 ## A restrição de arquitetura, verificada
 
@@ -170,7 +179,7 @@ E a CVM é x86 por um motivo só: o **SQL Server 2022 existe apenas para
 arm64 sem problema — .NET, Angular e nginx publicam as duas arquiteturas. É o
 banco que amarra, e trocá-lo contrariaria o alvo declarado no spine.
 
-### 7. Snapshot antes de apresentar
+### 6. Snapshot antes de apresentar
 
 Com a massa semeada e o roteiro ensaiado, tire um snapshot do disco. É o plano
 B mais rápido se a demonstração corromper dado:
@@ -179,15 +188,54 @@ B mais rápido se a demonstração corromper dado:
 tccli cbs CreateSnapshot --DiskId <disk-id> --SnapshotName pre-demo
 ```
 
+## Entrega contínua
+
+Push na `main` → a POC atualiza sozinha. O modelo é **pull**: o timer systemd
+na máquina compara `origin/main` com o commit implantado a cada minuto e, quando
+difere, roda o `deploy.sh` **daquele commit**.
+
+```
+push na main
+   ↓ (até 1 min)
+agente detecta SHA novo
+   ↓
+build das 3 imagens · tag = commit · a anterior vira :anterior
+   ↓
+up -d de migracoes, api e web        ← o db nunca é recriado
+   ↓
+health check em /api/saude
+   ├── ok       → publica /deploy.json com situacao "ok"
+   └── falhou   → retag :anterior, sobe de novo, situacao "revertido"
+```
+
+Em paralelo, `.github/workflows/deploy.yml` roda os testes e depois espera a POC
+publicar aquele commit em `/deploy.json`. O check fica verde quando a aplicação
+no ar confirma o commit, e vermelho se não confirmar em 20 minutos ou se tiver
+revertido.
+
+**Por que pull e não SSH a partir do runner:** o security group libera a porta 22
+para um único IP. Empurrar do GitHub exigiria abrir SSH para as faixas dos
+runners — milhares de endereços que mudam — e guardar uma chave privada nos
+segredos de um repositório público. O modelo pull dispensa as duas coisas:
+nenhum segredo no GitHub, nenhuma porta nova aberta.
+
 ## Operação do dia a dia
 
 | Ação | Comando |
 | --- | --- |
-| Nova versão | `sudo /opt/mundial/subir.sh 0.2.0` |
-| Rollback | `sudo /opt/mundial/subir.sh 0.1.0` |
-| Reiniciar tudo | `sudo docker compose -f /opt/mundial/docker-compose.yml restart` |
-| Ver segredos gerados | `sudo cat /opt/mundial/.env` |
+| Nova versão | `git push origin main` — não há passo manual |
+| Ver o que está no ar | `curl https://<dominio>/deploy.json` |
+| Forçar deploy agora | `ssh … 'sudo systemctl start mundial-deploy.service'` |
+| Implantar um commit específico | `ssh … 'sudo /usr/local/bin/mundial-deploy.sh <sha>'` |
+| Log do último deploy | `ssh … 'sudo journalctl -u mundial-deploy.service -n 50'` |
+| Pausar a entrega contínua | `ssh … 'sudo systemctl stop mundial-deploy.timer'` |
+| Ver segredos gerados | `ssh … 'sudo cat /opt/mundial/.env'` |
 | Derrubar a conta | `terraform destroy` |
+
+O rollback é automático quando o health check falha. Para voltar de propósito a
+uma versão que passou no health check, rode o `mundial-deploy.sh` com o SHA
+desejado — mas lembre que o agente vai reimplantar o topo de `origin/main` no
+minuto seguinte. Para segurar, pare o timer antes.
 
 `terraform destroy` apaga a máquina e o volume junto. Numa POC isso é o
 comportamento certo — o dado é semeado, e conta aberta na nuvem depois da
@@ -206,11 +254,15 @@ Para lê-los: `sudo cat /opt/mundial/.env`.
 
 ## O que este Terraform não faz
 
-- **Não constrói imagem.** Build e push são seus, ou da CI.
-- **Não cria o TCR.** Um registry é recurso de conta, não de POC; criar e
-  destruir junto com a máquina apagaria as imagens.
+- **Não constrói imagem.** Quem constrói é o agente de deploy, na própria
+  máquina, a partir do repositório público. Não há registry envolvido — o que
+  troca esse desenho é o build passar para o runner do GitHub, publicando no
+  GHCR. Vale quando a CVM deixar de ser a máquina de build; hoje o build com
+  cache leva um minuto, e puxar ~800 MB de imagem por 20 Mbps levaria mais.
+- **Não instala o agente de deploy.** É um passo à parte, do passo 4, porque
+  mudar o cloud-init recria a máquina.
 - **Não faz backup.** Fora do escopo da POC por decisão registrada no PRD. Para
-  o dia da apresentação, o snapshot do passo 7 basta.
+  o dia da apresentação, o snapshot do passo 6 basta.
 - **Não registra domínio.** Registro A de domínio próprio é manual; o DuckDNS e
   o sslip.io são automáticos. Se o domínio estiver no DNSPod (da própria
   Tencent), dá para automatizar o registro A com `tencentcloud_dnspod_record`.
