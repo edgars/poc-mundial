@@ -1,0 +1,105 @@
+name: Deploy da POC
+
+# Dispara a cada push na main. O deploy em si é *pull*: a máquina na Tencent
+# tem um agente que busca o topo de origin/main a cada minuto. Este workflow
+# roda os testes e depois espera a POC confirmar, pelo /deploy.json, que está
+# servindo exatamente este commit.
+#
+# Por que não SSH daqui: o security group libera a porta 22 apenas para um IP.
+# Empurrar daqui exigiria abrir SSH para as faixas dos runners do GitHub — que
+# são milhares e mudam — e guardar uma chave privada nos segredos de um
+# repositório público. O modelo pull evita as duas coisas.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '_bmad/**'
+      - '_bmad-output/**'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-poc
+  cancel-in-progress: false
+
+env:
+  POC_URL: https://poc-mundial.exai.extreme.digital
+
+jobs:
+  testes:
+    name: Testes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restaurar e testar
+        run: dotnet test tests/Mundial.Testes/Mundial.Testes.csproj --nologo -v minimal
+
+  aguardar-deploy:
+    name: Aguardar a POC servir este commit
+    needs: testes
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Esperar o agente implantar
+        run: |
+          set -uo pipefail
+          esperado="${GITHUB_SHA}"
+          echo "esperando a POC servir ${esperado:0:7}"
+
+          for tentativa in $(seq 1 60); do
+            corpo=$(curl -fsS --max-time 10 "${POC_URL}/deploy.json" 2>/dev/null || echo '{}')
+            situacao=$(echo "$corpo" | jq -r '.situacao // "desconhecida"')
+            commit=$(echo "$corpo" | jq -r '.commit // ""')
+
+            echo "  [$tentativa] situacao=$situacao commit=${commit:0:7}"
+
+            if [ "$commit" = "$esperado" ] && [ "$situacao" = "ok" ]; then
+              echo "deploy confirmado"; exit 0
+            fi
+
+            if [ "$commit" = "$esperado" ] && [ "$situacao" = "revertido" ]; then
+              echo "::error::O deploy deste commit falhou no health check e a POC voltou para a versão anterior."
+              echo "$corpo"; exit 1
+            fi
+
+            sleep 20
+          done
+
+          echo "::error::A POC não confirmou este commit em 20 minutos."
+          curl -fsS --max-time 10 "${POC_URL}/deploy.json" || true
+          exit 1
+
+      - name: Fumaça — a aplicação responde de fora
+        run: |
+          set -euo pipefail
+          echo "saúde:"
+          curl -fsS --max-time 15 "${POC_URL}/api/saude" | tee /tmp/saude.json
+          echo
+          jq -e '.estado == "no ar"' /tmp/saude.json > /dev/null
+
+          echo "frontend:"
+          codigo=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${POC_URL}/")
+          echo "  status=$codigo"
+          [ "$codigo" = "200" ]
+
+          echo "dado semeado:"
+          curl -fsS --max-time 15 "${POC_URL}/api/docas" | jq -e 'length > 0' > /dev/null
+          echo "  docas respondendo"
+
+      - name: Resumo
+        if: always()
+        run: |
+          {
+            echo "### POC · ${POC_URL}"
+            echo
+            echo '```json'
+            curl -fsS --max-time 10 "${POC_URL}/deploy.json" 2>/dev/null || echo '{}'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

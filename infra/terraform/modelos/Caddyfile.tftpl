@@ -6,6 +6,14 @@
 ${endereco} {
 	encode zstd gzip
 
+	# Estado do último deploy. É por aqui que o pipeline do GitHub confirma
+	# qual commit está no ar, sem precisar de acesso SSH à máquina.
+	handle /deploy.json {
+		root * /srv/publico
+		file_server
+		header Cache-Control "no-store"
+	}
+
 	# Sem strip do prefixo: as rotas da API já nascem com /api
 	# (/api/saude, /api/entrar, /api/conferencia, /api/docas…).
 	handle /api/* {
