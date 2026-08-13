@@ -9,9 +9,15 @@
   <script>window.API_URL = "__API_URL__"; window.TZ_APLICACAO = "__TZ_APLICACAO__"; window.OTEL_WEB = "__OTEL_WEB__"; window.VERSAO = "__VERSAO__";</script>
   <script>
     // `ng serve` não passa pelo entrypoint.sh: os placeholders acima ficam literais. Detecta
-    // isso (só acontece fora de container) e aplica valores de desenvolvimento local — em
-    // produção a condição é sempre falsa, porque o sed já rodou antes desta página existir.
-    if (window.OTEL_WEB === "__OTEL_WEB__") {
+    // isso (só acontece fora de container) e aplica valores de desenvolvimento local.
+    //
+    // O placeholder do lado direito vai partido em duas strings de propósito: o entrypoint.sh
+    // roda `sed .../g` sobre o arquivo inteiro, e uma cópia inteira de "__OTEL_WEB__" aqui
+    // seria substituída junto com a da linha acima — a comparação passaria a ler
+    // `window.OTEL_WEB === "true"` (ou "false"), que é sempre verdadeira logo depois de a
+    // linha anterior atribuir exatamente esse valor. Foi assim que a condição virou
+    // incondicional e todo deploy passou a sobrescrever API_URL para localhost em produção.
+    if (window.OTEL_WEB === "__OTEL" + "_WEB__") {
       window.API_URL = "http://localhost:5001";
       window.OTEL_WEB = "true";
       window.VERSAO = "dev-local";
