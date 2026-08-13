@@ -6,7 +6,17 @@
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <script>window.API_URL = "__API_URL__"; window.TZ_APLICACAO = "__TZ_APLICACAO__"; window.OTEL_WEB = "__OTEL_WEB__";</script>
+  <script>window.API_URL = "__API_URL__"; window.TZ_APLICACAO = "__TZ_APLICACAO__"; window.OTEL_WEB = "__OTEL_WEB__"; window.VERSAO = "__VERSAO__";</script>
+  <script>
+    // `ng serve` não passa pelo entrypoint.sh: os placeholders acima ficam literais. Detecta
+    // isso (só acontece fora de container) e aplica valores de desenvolvimento local — em
+    // produção a condição é sempre falsa, porque o sed já rodou antes desta página existir.
+    if (window.OTEL_WEB === "__OTEL_WEB__") {
+      window.API_URL = "http://localhost:5001";
+      window.OTEL_WEB = "true";
+      window.VERSAO = "dev-local";
+    }
+  </script>
 </head>
 <body>
   <app-root></app-root>

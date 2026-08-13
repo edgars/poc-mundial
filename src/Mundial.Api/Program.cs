@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Http.Features;
 using Mundial.Api;
 using Mundial.Aplicacao;
 using Mundial.Demo;
@@ -90,6 +91,21 @@ encaminhados.KnownIPNetworks.Clear();
 encaminhados.KnownProxies.Clear();
 app.UseForwardedHeaders(encaminhados);
 
+// O healthcheck do compose sonda /api/saude a cada 10 segundos. O trace já o ignora
+// (Telemetria.cs), mas a métrica não tinha como: a opção Filter da instrumentação de ASP.NET
+// Core vale só para spans. Com isso, http.server.request.duration passava a maior parte do dia
+// descrevendo a sonda — a mediana da API era a mediana do healthcheck. Este é o desligamento por
+// requisição que o próprio ASP.NET oferece desde o .NET 8.
+app.Use((contexto, proxima) =>
+{
+    if (contexto.Request.Path.StartsWithSegments("/api/saude"))
+    {
+        var marcadores = contexto.Features.Get<IHttpMetricsTagsFeature>();
+        if (marcadores is not null) marcadores.MetricsDisabled = true;
+    }
+    return proxima(contexto);
+});
+
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -117,6 +133,8 @@ IResult Problema(ResultadoRegra r, int status = StatusCodes.Status422Unprocessab
     // "quantas vezes a RK-xxxx recusou hoje" sem abrir log nenhum.
     Telemetria.Marcar("regra.chave", r.Chave);
     Telemetria.Marcar("regra.tipo", r.Tipo.ToString());
+    // Todo caminho de recusa da API desemboca aqui, então um contador só cobre a API inteira.
+    Metricas.Recusa(r);
     return Results.Problem(pd);
 }
 
@@ -209,6 +227,9 @@ app.MapPost("/api/conferencia/leituras",
     // que não resolve é fila parada na doca.
     atividade?.SetTag("leitura.estado", leitura.Estado);
     atividade?.SetTag("regra.chave", leitura.Chave);
+    // A leitura recusada não passa pelo Problema() — devolve 200 com estado "recusado" —, então
+    // sem este contador ela não apareceria em métrica nenhuma.
+    Metricas.Leitura(leitura.Estado);
     return Results.Ok(leitura);
 }).RequireAuthorization("conferenci:consultar")
   .WithTags("Conferência").WithSummary("Resolve um código lido (EAN/DUN-14) contra os itens do documento.");
@@ -224,6 +245,7 @@ app.MapPost("/api/conferencia/lancamentos",
     atividade?.SetTag("item.codigo", pedido.Codigo);
     atividade?.SetTag("item.quantidade", (double)pedido.Quantidade);
     var r = await lancar.Executar(doc, pedido.Codigo, pedido.Quantidade, quem.Matricula(), pedido.Confirmado, pedido.Versao);
+    Metricas.Lancamento(r, "lancar");
     if (!r.Passou) return Problema(r);
     var (atualizado, resultado) = await abrir.Executar(documento);
     return Results.Ok(Projetar(atualizado!, resultado));
@@ -236,7 +258,13 @@ app.MapDelete("/api/conferencia/lancamentos",
 {
     var (doc, _) = await abrir.Executar(documento);
     if (doc is null) return Results.NotFound();
+    // O estorno é a única operação de escrita da conferência que não tinha span próprio; sem ele,
+    // "sumiu quantidade lançada" só aparecia como um DELETE genérico.
+    using var atividade = Telemetria.Fonte.StartActivity("EstornarLancamento");
+    atividade?.SetTag("conferencia.documento", documento);
+    atividade?.SetTag("item.codigo", codigo);
     var r = await lancar.Excluir(doc, codigo, quem.Matricula(), confirmado);
+    Metricas.Lancamento(r, "estornar");
     if (!r.Passou) return Problema(r);
     var (atualizado, resultado) = await abrir.Executar(documento);
     return Results.Ok(Projetar(atualizado!, resultado));
@@ -253,6 +281,7 @@ app.MapPost("/api/conferencia/fechamento",
     atividade?.SetTag("conferencia.documento", documento);
     atividade?.SetTag("conferencia.divergencia", doc.TemDivergencia);
     var r = await finalizar.Executar(doc, quem.Matricula(), pedido.Confirmado);
+    Metricas.Finalizacao(r, doc.TemDivergencia, doc.ItensLancados);
     if (!r.Passou) return Problema(r);
     var (atualizado, resultado) = await abrir.Executar(documento);
     return Results.Ok(Projetar(atualizado!, resultado));

@@ -41,6 +41,26 @@ jobs:
       - name: Restaurar e testar
         run: dotnet test tests/Mundial.Testes/Mundial.Testes.csproj --nologo -v minimal
 
+      # Os invariantes do spine — autorização em todo endpoint, domínio sem infraestrutura,
+      # nenhum DateTime.Now. Ficavam de fora daqui: existiam no repositório e ninguém os
+      # rodava, que é exatamente o buraco que o próprio arquivo diz ter motivado sua criação.
+      - name: Invariantes de arquitetura
+        run: dotnet test tests/Mundial.Testes.Arquitetura/Mundial.Testes.Arquitetura.csproj --nologo -v minimal
+
+      # O frontend só era compilado dentro da imagem, durante o deploy — um erro de TypeScript
+      # virava build quebrado na máquina em vez de check vermelho aqui.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Compilar o frontend
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
+
   aguardar-deploy:
     name: Aguardar a POC servir este commit
     needs: testes

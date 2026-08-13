@@ -208,6 +208,17 @@ health check em /api/saude
    └── falhou   → retag :anterior, sobe de novo, situacao "revertido"
 ```
 
+Cada mudança de situação também vira um log OTLP no coletor, como serviço
+`mundial-deploy`, com commit, situação, duração e o motivo quando falha — é o que
+liga uma regressão de latência ao deploy que a causou. Sai calado quando não há
+coletor configurado, tem cinco segundos de timeout e nunca derruba o deploy:
+telemetria que impede o rollback é pior que telemetria nenhuma.
+
+O mesmo commit entra nas imagens em `--build-arg VERSAO` e vira `service.version`
+em todo sinal — de API, migrações e navegador. Pela imagem, e não pelo `.env`: o
+`.env` da máquina só é escrito no primeiro boot, e variável nova nele não chega
+sozinha.
+
 Em paralelo, `.github/workflows/deploy.yml` roda os testes e depois espera a POC
 publicar aquele commit em `/deploy.json`. O check fica verde quando a aplicação
 no ar confirma o commit, e vermelho se não confirmar em 20 minutos ou se tiver

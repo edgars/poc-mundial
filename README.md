@@ -62,17 +62,35 @@ vazio desliga tudo, e a aplicação sobe igual.
 
 | Sinal | Origem | O que aparece |
 | --- | --- | --- |
-| Traces | ASP.NET Core, HttpClient, SqlClient, spans de negócio | request completo, incluindo a query e a regra (`regra.chave`) que recusou |
-| Métricas | ASP.NET Core, runtime .NET | latência, throughput, códigos HTTP, GC |
-| Logs | `ILogger` da API | cada linha com `trace_id`, ligada ao trace |
-| Navegador | carregamento da página e chamadas à API | trace único do clique até o SQL |
+| Traces · API | ASP.NET Core, HttpClient, SqlClient, spans de negócio | request completo, incluindo a query e a regra (`regra.chave`) que recusou |
+| Traces · migrações | um span por script DbUp (`mundial-migracoes`) | qual script demorou, e quanto o banco levou para responder na subida |
+| Traces · navegador | carregamento, chamadas à API, cliques, troca de rota | trace único do clique até o SQL; navegação nomeada pelo padrão da rota |
+| Métricas · API | ASP.NET Core, runtime, processo, negócio | latência, throughput, GC, memória residente, descritores abertos |
+| Métricas · navegador | Web Vitals e erros | LCP, FCP, TTFB, INP, CLS e contagem de erro por origem |
+| Logs | `ILogger` da API, erros do navegador, marcador de deploy | cada linha com `trace_id`, ligada ao trace |
+
+As métricas de negócio (`Metricas.cs`) respondem o que o span responde caro: `mundial.leituras`
+por desfecho, `mundial.regras.recusas` por chave de regra, `mundial.lancamentos`,
+`mundial.finalizacoes` com e sem divergência, `mundial.conferencia.itens`. Rótulo só de conjunto
+fechado — documento, produto e matrícula ficam de fora, porque em métrica cada valor distinto
+vira uma série que não morre mais.
+
+`/api/saude` fica fora de trace **e** de métrica: o healthcheck sonda a cada 10 s, e contá-lo
+fazia da mediana da API a mediana da sonda.
+
+Cada deploy emite um log OTLP como serviço `mundial-deploy`, com commit, situação e duração. É o
+que permite responder "isso começou depois de qual versão?". A versão está em todo sinal, em
+`service.version`: vem do commit, gravado na imagem pelo build (`--build-arg VERSAO`), não do
+`.env` — variável nova no `.env` da máquina não chega sozinha.
 
 O navegador posta em `/otlp` na própria origem, nunca no coletor: o ingest recusa preflight CORS
 e o bearer não pode viver no JavaScript. Quem acrescenta o `Authorization` é o nginx do container
-web (`web/entrypoint.sh`), no compose local e na máquina publicada.
+web (`web/entrypoint.sh`), no compose local e na máquina publicada. O bloco casa `/otlp/(.*)`,
+então serve aos três sinais.
 
 O texto do SQL e os parâmetros de query ficam fora dos spans de propósito — levariam número de
-nota, código de fornecedor e matrícula para fora da máquina.
+nota, código de fornecedor e matrícula para fora da máquina. Pelo mesmo motivo a sessão do
+navegador (`session.id`) identifica a visita, nunca o operador.
 
 ## Como construir
 

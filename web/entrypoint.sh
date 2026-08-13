@@ -4,6 +4,11 @@
 sed -i "s|__API_URL__|${API_URL:-http://localhost:5000}|g" /usr/share/nginx/html/index.html
 sed -i "s|__TZ_APLICACAO__|${TZ_APLICACAO:-America/Sao_Paulo}|g" /usr/share/nginx/html/index.html
 
+# service.version da telemetria. Vem do ARG VERSAO da imagem (o commit, no deploy), não do .env:
+# variável nova no .env da máquina não chega sozinha — foi assim que a telemetria ficou desligada
+# em produção depois do commit que a introduziu.
+sed -i "s|__VERSAO__|${VERSAO:-dev}|g" /usr/share/nginx/html/index.html
+
 # Telemetria do navegador. O coletor OTLP recusa preflight CORS e exige um bearer que não
 # pode viver no JavaScript, então o navegador posta em /otlp na própria origem e é aqui que
 # o token entra na requisição. Sem coletor configurado o arquivo sai vazio e /otlp não existe.

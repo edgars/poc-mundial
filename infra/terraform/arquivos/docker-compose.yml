@@ -44,6 +44,12 @@ services:
     profiles: ["app"]
     environment:
       CONNECTION_STRING: ${CONNECTION_STRING}
+      # Um span por script DbUp. Serviço à parte no SigNoz: este container vive segundos e some.
+      OTEL_SERVICE_NAME: mundial-migracoes
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT}
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL}
+      OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS}
+      OTEL_RESOURCE_ATTRIBUTES: ${OTEL_RESOURCE_ATTRIBUTES}
     depends_on:
       db:
         condition: service_healthy
@@ -70,6 +76,12 @@ services:
       OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS}
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME}
       OTEL_RESOURCE_ATTRIBUTES: ${OTEL_RESOURCE_ATTRIBUTES}
+      # Exemplar amarra o ponto do histograma ao trace que o produziu. O valor embutido aqui é
+      # de propósito: chave que falte no .env da máquina não desliga o recurso — que é
+      # exatamente o modo de falha que deixou a telemetria desligada em produção.
+      OTEL_METRICS_EXEMPLAR_FILTER: ${OTEL_METRICS_EXEMPLAR_FILTER:-trace_based}
+      # O SigNoz armazena contador em delta; em cumulativo todo restart zera a série.
+      OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE: ${OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE:-delta}
     depends_on:
       db:
         condition: service_healthy

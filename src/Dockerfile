@@ -13,6 +13,11 @@ RUN dotnet publish Mundial.Migrations/Mundial.Migrations.csproj -c Release -o /a
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS api
 WORKDIR /app
 COPY --from=build /app/api .
+# service.version na telemetria. O deploy passa o commit (--build-arg VERSAO=$ALVO); é o que
+# permite dizer em qual versão a latência mudou. Fica na imagem, não no .env: variável nova no
+# .env da máquina não chega sozinha, e foi assim que a telemetria ficou desligada em produção.
+ARG VERSAO=dev
+ENV VERSAO=$VERSAO
 ENV ASPNETCORE_HTTP_PORTS=5000
 EXPOSE 5000
 ENTRYPOINT ["dotnet", "Mundial.Api.dll"]
@@ -20,4 +25,6 @@ ENTRYPOINT ["dotnet", "Mundial.Api.dll"]
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS migracoes
 WORKDIR /app
 COPY --from=build /app/migracoes .
+ARG VERSAO=dev
+ENV VERSAO=$VERSAO
 ENTRYPOINT ["dotnet", "Mundial.Migrations.dll"]

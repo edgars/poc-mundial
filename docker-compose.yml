@@ -16,8 +16,17 @@ services:
     build:
       context: ./src
       target: migracoes
+      args:
+        VERSAO: ${VERSAO:-dev}
     environment:
       CONNECTION_STRING: ${CONNECTION_STRING}
+      # Um span por script DbUp. Serviço à parte no SigNoz de propósito: este container vive
+      # segundos e some, e misturá-lo com a api distorceria toda métrica de disponibilidade.
+      OTEL_SERVICE_NAME: mundial-migracoes
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT}
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL}
+      OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS}
+      OTEL_RESOURCE_ATTRIBUTES: ${OTEL_RESOURCE_ATTRIBUTES}
     depends_on: [db]
     restart: "no"
 
@@ -25,6 +34,8 @@ services:
     build:
       context: ./src
       target: api
+      args:
+        VERSAO: ${VERSAO:-dev}
     environment:
       CONNECTION_STRING: ${CONNECTION_STRING}
       MODO_DEMO: ${MODO_DEMO}
@@ -40,6 +51,13 @@ services:
       OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS}
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME}
       OTEL_RESOURCE_ATTRIBUTES: ${OTEL_RESOURCE_ATTRIBUTES}
+      # Exemplar amarra o ponto do histograma ao trace que o produziu: no SigNoz dá para clicar
+      # no pico de latência e cair no request lento. É configuração do SDK, não código.
+      # Com valor embutido aqui: chave que falte no .env da máquina não desliga o recurso.
+      OTEL_METRICS_EXEMPLAR_FILTER: ${OTEL_METRICS_EXEMPLAR_FILTER:-trace_based}
+      # O SigNoz armazena contador em delta. Em cumulativo, todo restart do container zera a
+      # série e o painel mostra queda onde não houve nenhuma.
+      OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE: ${OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE:-delta}
     ports: ["${PORTA_API}:5000"]
     depends_on:
       migracoes:
@@ -49,6 +67,8 @@ services:
     build:
       context: ./web
       target: web
+      args:
+        VERSAO: ${VERSAO:-dev}
     environment:
       API_URL: ${API_URL}
       TZ_APLICACAO: ${TZ_APLICACAO}

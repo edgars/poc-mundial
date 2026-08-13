@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -29,7 +30,13 @@ public static class Telemetria
         if (string.IsNullOrWhiteSpace(destino)) return builder;
 
         var servico = Environment.GetEnvironmentVariable("OTEL_SERVICE_NAME") ?? "mundial-api";
-        var versao = typeof(Telemetria).Assembly.GetName().Version?.ToString() ?? "0.0.0";
+
+        // VERSAO é gravada na imagem pelo build (ARG no Dockerfile; o deploy passa o commit).
+        // Sem ela a versão do assembly nunca muda entre commits, e o SigNoz não tem como
+        // responder em qual deploy a latência mudou — que é metade do motivo de ter isto.
+        var versao = Environment.GetEnvironmentVariable("VERSAO") is { Length: > 0 } marcada
+            ? marcada
+            : typeof(Telemetria).Assembly.GetName().Version?.ToString() ?? "0.0.0";
 
         builder.Services.AddOpenTelemetry()
             .ConfigureResource(recurso => recurso.AddService(servico, serviceVersion: versao))
@@ -54,7 +61,12 @@ public static class Telemetria
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
                 .AddRuntimeInstrumentation()
+                // Contadores de negócio: recusa por regra, bipagem por desfecho, fecho com
+                // divergência. Ver Metricas.cs.
+                .AddMeter(Metricas.Medidor.Name)
                 .AddOtlpExporter());
+
+        RegistrarMetricasDeProcesso();
 
         builder.Logging.AddOpenTelemetry(o =>
         {
@@ -66,6 +78,86 @@ public static class Telemetria
         });
 
         return builder;
+    }
+
+    /// <summary>
+    /// Os instrumentos observáveis precisam ficar vivos: soltos, o coletor de lixo os leva e a
+    /// série simplesmente para de chegar, sem erro nenhum.
+    /// </summary>
+    private static readonly List<object> InstrumentosDeProcesso = [];
+
+    /// <summary>
+    /// Métricas do processo. A instrumentação de Runtime já cobre GC, heap e thread pool — o que
+    /// falta é o que o sistema operacional vê: memória residente, CPU e descritores de arquivo.
+    ///
+    /// À mão, sem OpenTelemetry.Instrumentation.Process de propósito: esse pacote só existe em
+    /// prerelease, e o resto do projeto está inteiro em versões estáveis. São cinco medidas; não
+    /// vale trazer um beta para dentro do deploy por elas.
+    /// </summary>
+    private static void RegistrarMetricasDeProcesso()
+    {
+        // O Meter é estático e sobrevive ao builder. Chamado duas vezes — um teste que sobe dois
+        // hosts, por exemplo —, registraria o mesmo instrumento de novo no mesmo Meter, e a
+        // mesma medida sairia duplicada a cada coleta.
+        if (InstrumentosDeProcesso.Count > 0) return;
+
+        var medidor = Metricas.Medidor;
+
+        InstrumentosDeProcesso.Add(medidor.CreateObservableUpDownCounter(
+            "process.memory.usage", () => DoProcesso(p => p.WorkingSet64), "By",
+            "Memória residente do processo."));
+
+        InstrumentosDeProcesso.Add(medidor.CreateObservableUpDownCounter(
+            "process.memory.virtual", () => DoProcesso(p => p.VirtualMemorySize64), "By",
+            "Memória virtual reservada pelo processo."));
+
+        InstrumentosDeProcesso.Add(medidor.CreateObservableCounter(
+            "process.cpu.time", TemposDeCpu, "s",
+            "Tempo de CPU consumido pelo processo, separado por modo."));
+
+        InstrumentosDeProcesso.Add(medidor.CreateObservableUpDownCounter(
+            "process.thread.count", () => DoProcesso(p => (long)p.Threads.Count), "{thread}",
+            "Threads do processo."));
+
+        // Só faz sentido em Linux, que é onde o container roda. Em outro sistema a leitura
+        // falharia a cada coleta e encheria o log de exceção por nada.
+        if (OperatingSystem.IsLinux())
+            InstrumentosDeProcesso.Add(medidor.CreateObservableUpDownCounter(
+                "process.open_file_descriptors", DescritoresAbertos, "{fd}",
+                "Descritores abertos — socket vazando aparece aqui muito antes de virar queda."));
+    }
+
+    private static long DoProcesso(Func<Process, long> leitura)
+    {
+        // Instância nova a cada coleta: a que fica guardada devolve o valor congelado da
+        // primeira leitura, e o gráfico vira uma reta.
+        using var processo = Process.GetCurrentProcess();
+        return leitura(processo);
+    }
+
+    private static IEnumerable<Measurement<double>> TemposDeCpu()
+    {
+        using var processo = Process.GetCurrentProcess();
+        return
+        [
+            new(processo.UserProcessorTime.TotalSeconds,
+                new KeyValuePair<string, object?>("cpu.mode", "user")),
+            new(processo.PrivilegedProcessorTime.TotalSeconds,
+                new KeyValuePair<string, object?>("cpu.mode", "system")),
+        ];
+    }
+
+    private static long DescritoresAbertos()
+    {
+        try
+        {
+            return Directory.GetFileSystemEntries("/proc/self/fd").LongLength;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // Telemetria que derruba o processo é pior que telemetria faltando.
+            return 0;
+        }
     }
 
     /// <summary>

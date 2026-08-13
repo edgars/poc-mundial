@@ -20,8 +20,58 @@ PUBLICO=$RAIZ/publico
 ESTADO=$PUBLICO/deploy.json
 URL_LOCAL=http://127.0.0.1/api/saude
 TENTATIVAS_SAUDE=30
+INICIO=$(date +%s)
 
 mkdir -p "$PUBLICO"
+
+# Marca o deploy no coletor. É o que permite responder "isso começou depois de qual versão?" —
+# sem marcador, uma regressão de latência e um commit novo são dois fatos sem ligação na tela.
+#
+# Log OTLP e não span: deploy é evento, não operação com pai e filho. Vai como serviço próprio
+# (mundial-deploy), então não polui o gráfico de disponibilidade da api.
+#
+# Nunca derruba o deploy: sem coletor configurado sai calado, e a rede tem cinco segundos no
+# máximo. Telemetria que impede o rollback é pior que telemetria nenhuma.
+marca_deploy() { # situacao, sha, detalhe
+  local endpoint token ambiente detalhe agora duracao severidade texto
+  endpoint=$(grep -m1 '^OTEL_EXPORTER_OTLP_ENDPOINT=' "$RAIZ/.env" 2>/dev/null | cut -d= -f2- | tr -d '\r' || true)
+  [ -n "$endpoint" ] || return 0
+
+  token=$(grep -m1 '^OTEL_EXPORTER_OTLP_HEADERS=' "$RAIZ/.env" 2>/dev/null | sed 's/.*Bearer //' | tr -d '\r' || true)
+  ambiente=$(grep -m1 '^OTEL_RESOURCE_ATTRIBUTES=' "$RAIZ/.env" 2>/dev/null | sed -n 's/.*deployment\.environment=\([^,]*\).*/\1/p' | tr -d '\r' || true)
+  # Aspas e barras quebrariam o JSON montado à mão; nenhuma mensagem daqui as usa.
+  detalhe=$(printf '%s' "$3" | tr -d '"\\' || true)
+  agora=$(date +%s%N)
+  duracao=$(( $(date +%s) - INICIO ))
+
+  # Números do OTLP: INFO 9, WARN 13, ERROR 17. Sem esta distinção, um deploy revertido não
+  # apareceria num filtro por severidade — que é o primeiro lugar onde se procura.
+  case "$1" in
+    falhou|revertido) severidade=17; texto=ERROR ;;
+    revertendo)       severidade=13; texto=WARN ;;
+    *)                severidade=9;  texto=INFO ;;
+  esac
+
+  curl -fsS --max-time 5 -X POST "$endpoint/v1/logs" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $token" \
+    -d "{\"resourceLogs\":[{\"resource\":{\"attributes\":[
+      {\"key\":\"service.name\",\"value\":{\"stringValue\":\"mundial-deploy\"}},
+      {\"key\":\"deployment.environment\",\"value\":{\"stringValue\":\"$ambiente\"}}]},
+      \"scopeLogs\":[{\"logRecords\":[{
+        \"timeUnixNano\":\"$agora\",
+        \"severityNumber\":$severidade,
+        \"severityText\":\"$texto\",
+        \"body\":{\"stringValue\":\"deploy $1 ${2:0:7}\"},
+        \"attributes\":[
+          {\"key\":\"event.name\",\"value\":{\"stringValue\":\"deploy\"}},
+          {\"key\":\"deploy.situacao\",\"value\":{\"stringValue\":\"$1\"}},
+          {\"key\":\"deploy.commit\",\"value\":{\"stringValue\":\"$2\"}},
+          {\"key\":\"deploy.anterior\",\"value\":{\"stringValue\":\"${SHA_ANTERIOR:-}\"}},
+          {\"key\":\"deploy.duracao_s\",\"value\":{\"intValue\":\"$duracao\"}},
+          {\"key\":\"deploy.detalhe\",\"value\":{\"stringValue\":\"$detalhe\"}}]}]}]}]}" \
+    >/dev/null 2>&1 || true
+}
 
 registra() { # situacao, sha, detalhe
   local agora
@@ -36,9 +86,19 @@ registra() { # situacao, sha, detalhe
 }
 JSON
   chmod 644 "$ESTADO"
+  # Todo desfecho do deploy passa por registra(), então marcar aqui cobre o começo, o fim e a
+  # volta atrás sem espalhar chamada pelo script.
+  marca_deploy "$1" "$2" "$3"
 }
 
 log() { echo "[$(date +%H:%M:%S)] $*"; }
+
+# bin/ e obj/ estão versionados neste repositório, então o checkout os traz de volta a cada
+# deploy — construídos em outra plataforma, e é isso que quebra o restore dentro do container.
+# Precisa rodar depois do checkout e de novo depois dos testes, que os recriam.
+limpa_artefatos() {
+  find . -type d \( -name bin -o -name obj -o -name node_modules \) -prune -exec rm -rf {} + 2>/dev/null || true
+}
 
 # ---------------------------------------------------------------- commit alvo
 cd "$FONTE"
@@ -57,8 +117,35 @@ registra "implantando" "$ALVO" "build em andamento"
 
 # ------------------------------------------------------------------- checkout
 git reset --hard "$ALVO" --quiet
-# artefatos de build de outra plataforma quebram o restore dentro do container
-find . -type d \( -name bin -o -name obj -o -name node_modules \) -prune -exec rm -rf {} + 2>/dev/null || true
+limpa_artefatos
+
+# ------------------------------------------------------------------- validação
+# A barreira que faltava. Até aqui a única defesa era o health check DEPOIS da troca, e ele só
+# pergunta se a API responde: um commit que compila e quebra uma regra de negócio passava por
+# ele e ia ao ar. Os testes do GitHub rodam em paralelo ao deploy, não antes — quando ficam
+# vermelhos, o commit já está publicado há minutos.
+#
+# Roda na mesma imagem do SDK que o build já usa, então não há nada novo para baixar. O volume
+# de pacotes evita repetir o restore inteiro a cada deploy.
+IMAGEM_SDK=mcr.microsoft.com/dotnet/sdk:10.0
+testes_ok=1
+for projeto in tests/Mundial.Testes tests/Mundial.Testes.Arquitetura; do
+  log "testes: $projeto"
+  docker run --rm \
+    -v "$FONTE:/repo" -w /repo \
+    -v mundial-nuget:/root/.nuget/packages \
+    -e DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+    "$IMAGEM_SDK" dotnet test "$projeto" --nologo -v minimal || { testes_ok=0; break; }
+done
+
+# O dotnet test acabou de escrever bin/ e obj/ no checkout; o build não pode vê-los.
+limpa_artefatos
+
+if [ "$testes_ok" = "0" ]; then
+  log "TESTES REPROVARAM — nada é trocado"
+  registra "falhou" "$ALVO" "os testes reprovaram; a versão anterior segue no ar"
+  exit 1
+fi
 
 # ---------------------------------------------------------------------- build
 # Cada imagem é marcada com o commit. A tag :anterior guarda a versão que está
@@ -69,9 +156,24 @@ for img in api web migracoes; do
   fi
 done
 
-docker build --target api       -t "mundial-api:$ALVO"       -t mundial-api:atual       ./src
-docker build --target migracoes -t "mundial-migracoes:$ALVO" -t mundial-migracoes:atual ./src
-docker build --target web       -t "mundial-web:$ALVO"       -t mundial-web:atual       ./web
+# VERSAO entra na imagem e vira service.version na telemetria. Pela imagem, e não pelo .env, de
+# propósito: o .env da máquina só é escrito no primeiro boot, e variável nova nele nunca chega
+# sozinha — foi assim que a telemetria inteira ficou desligada em produção.
+#
+# Build que falha é desfecho tratado, não morte do script. Sob `set -e` um erro de compilação
+# saía daqui direto: os containers seguiam na versão antiga — o que está certo —, mas o
+# deploy.json congelava em "implantando" e o agente, com o checkout já em $ALVO, dava o commit
+# por implantado e nunca mais tentava. O pipeline esperava os vinte minutos inteiros e ficava
+# vermelho sem dizer por quê. É o mesmo motivo do `subiu=0` mais abaixo.
+for par in "api ./src" "migracoes ./src" "web ./web"; do
+  set -- $par
+  if ! docker build --target "$1" --build-arg "VERSAO=$ALVO" \
+         -t "mundial-$1:$ALVO" -t "mundial-$1:atual" "$2"; then
+    log "o build da imagem $1 falhou"
+    registra "falhou" "$ALVO" "o build da imagem $1 falhou; a versão anterior segue no ar"
+    exit 1
+  fi
+done
 
 # ---------------------------------------------------------------------- subida
 cd "$RAIZ"

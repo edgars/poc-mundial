@@ -1,0 +1,10 @@
+# O repositório guarda tudo em LF. Sem esta declaração, um checkout no Windows deixa a árvore
+# em CRLF, o git passa a ver quase todo arquivo como modificado e o diff real some no ruído:
+# 1232 arquivos listados para 18 realmente alterados. Nada muda no conteúdo versionado — só
+# para de haver diferença onde nunca houve.
+* text=auto eol=lf
+
+# Explícito para o que roda na máquina Linux: com CRLF o shebang quebra e o script não executa.
+*.sh    text eol=lf
+*.tftpl text eol=lf
+Caddyfile* text eol=lf
