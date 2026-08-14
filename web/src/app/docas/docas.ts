@@ -40,6 +40,8 @@ import { Api, ResumoDoca } from '../api/api';
       }
       <button class="btn sec" style="padding:6px 12px;font-size:12px"
               (click)="ir('/consultas')">Consultas</button>
+      <button class="btn sec" style="padding:6px 12px;font-size:12px"
+              (click)="ir('/fluxo-correto')">Receber carga</button>
       @if (podeResetar()) {
         <button class="btn sec" style="padding:6px 12px;font-size:12px"
                 (click)="resetar()" [disabled]="resetando()">
