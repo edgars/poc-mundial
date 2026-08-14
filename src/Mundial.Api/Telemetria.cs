@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using OpenTelemetry;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -49,18 +50,25 @@ public static class Telemetria
                     o.RecordException = true;
                 })
                 .AddHttpClientInstrumentation()
-                // Sem opções de propósito. No 1.17 o texto da query não é mais emitido, e a
-                // captura de parâmetros — que levaria número de nota, código de fornecedor e
-                // matrícula para fora da máquina — é experimental (a propriedade nem é pública
-                // no release estável) e vem desligada. O span já traz servidor, duração e erro,
-                // que é o que se investiga.
+                // Sem opções de propósito. O span de banco sai com o texto da consulta em
+                // db.query.text, mas parametrizado — "WHERE matric = @m", nunca o valor.
+                // A captura de parâmetros, que é o que levaria número de nota, código de
+                // fornecedor e matrícula para fora da máquina, vem desligada e fica assim.
                 .AddSqlClientInstrumentation()
                 .AddSource(NomeFonte)
+                // Antes do exportador, e não depois: os processadores rodam na ordem em que
+                // são registrados, e o AddOtlpExporter registra o dele. Invertido, o span
+                // sairia da máquina antes de receber os atributos espelhados.
+                .AddProcessor(new EspelhoDeConvencaoDeBanco())
                 .AddOtlpExporter())
             .WithMetrics(metricas => metricas
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
                 .AddRuntimeInstrumentation()
+                // db.client.operation.duration: latência e taxa de erro do banco como série
+                // temporal. Sem isto, banco só existia span a span — dá para investigar uma
+                // conferência lenta, não para ver a lentidão chegando nem para alertar.
+                .AddSqlClientInstrumentation()
                 // Contadores de negócio: recusa por regra, bipagem por desfecho, fecho com
                 // divergência. Ver Metricas.cs.
                 .AddMeter(Metricas.Medidor.Name)
@@ -168,5 +176,43 @@ public static class Telemetria
     public static void Marcar(string chave, object? valor)
     {
         if (valor is not null) Activity.Current?.SetTag(chave, valor);
+    }
+}
+
+/// <summary>
+/// Repete os atributos de banco nos nomes da convenção antiga.
+///
+/// A instrumentação do SqlClient no 1.17 já migrou para a convenção estável — o span sai com
+/// db.system.name, db.namespace e db.query.text, e nenhum dos nomes antigos. A tela de banco do
+/// SigNoz procura db.system: sem ele os spans existem, aparecem no trace da requisição, e a tela
+/// que responde "o banco está lento?" fica vazia como se a instrumentação não existisse.
+///
+/// OTEL_SEMCONV_STABILITY_OPT_IN=database/dup não resolve — testado contra esta versão, continua
+/// saindo só o nome novo. Daí espelhar aqui, que é o único ponto sob nosso controle.
+///
+/// Isto é ponte para o coletor de hoje, não convenção nossa: quando o SigNoz ler os nomes
+/// estáveis, esta classe sai inteira e nada mais muda.
+/// </summary>
+internal sealed class EspelhoDeConvencaoDeBanco : BaseProcessor<Activity>
+{
+    public override void OnEnd(Activity atividade)
+    {
+        // Só spans de banco; os outros saem daqui na primeira linha.
+        if (atividade.GetTagItem("db.system.name") is not string sistema) return;
+
+        // Se um dia a instrumentação voltar a emitir os dois, quem manda é ela.
+        if (atividade.GetTagItem("db.system") is not null) return;
+
+        // O valor também mudou: era "mssql" na convenção antiga, virou "microsoft.sql_server".
+        // Espelhar o nome sem traduzir o valor não adiantaria nada — o filtro da tela é por
+        // db.system=mssql.
+        atividade.SetTag("db.system", sistema == "microsoft.sql_server" ? "mssql" : sistema);
+
+        if (atividade.GetTagItem("db.namespace") is string banco)
+            atividade.SetTag("db.name", banco);
+
+        // Já parametrizado pela instrumentação; nenhum valor de negócio entra aqui.
+        if (atividade.GetTagItem("db.query.text") is string consulta)
+            atividade.SetTag("db.statement", consulta);
     }
 }
