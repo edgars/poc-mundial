@@ -1,0 +1,17 @@
+import { chromium } from 'playwright';
+const WEB = 'https://poc-mundial.exai.extreme.digital';
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1360, height: 860 } });
+page.on('console', (m) => console.log('CONSOLE:', m.type(), m.text()));
+page.on('pageerror', (e) => console.log('PAGEERROR:', e.message));
+page.on('requestfailed', (r) => console.log('REQFAIL:', r.url(), r.failure()?.errorText));
+await page.goto(`${WEB}/entrar`, { waitUntil: 'networkidle' });
+console.log('URL after goto:', page.url());
+await page.fill('#mat', '04127');
+await page.fill('#sen', 'mundial');
+await page.click('button[type=submit]');
+await page.waitForTimeout(3000);
+console.log('URL after submit:', page.url());
+await page.screenshot({ path: 'debug.png' });
+console.log(await page.content().then(c => c.slice(0, 500)));
+await browser.close();
